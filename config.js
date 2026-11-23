@@ -42,10 +42,12 @@ window.WEIYA = {
   // 流程（照 2027 尾牙活動企劃書 17:30 開席版，照順序）
   // game：嵌入遊戲；video:true：進這一段前先播動畫；draw:true：抽獎（多放煙火）；
   // grand:true：頭獎（集氣衝刺）；rules：在卡片上列出玩法
+  // 氛圍（畫面＋音樂）會自動判斷：遊戲 → 遊戲風、抽獎／頭獎 → 抽獎風、其他 → 用餐風；
+  // 要手動指定就加 mood: "dine" / "draw" / "game"；moodTag 是上方中間的小標籤（"" = 不顯示）
   stages: [
-    { t: "16:45", ic: "🏮", h: "歡迎蒞臨", ml: "Welcome · Chào mừng", d: "請到報到處簽到、領麻將紙，再入座", chip: "報到" },
+    { t: "16:45", ic: "🏮", h: "歡迎蒞臨", ml: "Welcome · Chào mừng", d: "請到報到處簽到、領麻將紙，再入座", chip: "報到", moodTag: "🏮 歡迎入席" },
     { t: "17:30", ic: "🥂", h: "開場致詞", ml: "Opening · Khai mạc", d: "董事長致詞・各單位主管致詞（邊上菜）", chip: "致詞" },
-    { t: "17:55", ic: "🀄", h: "麻將賓果", ml: "Mahjong Bingo · Bingo mạt chược", d: "拿出麻將紙！連成一條線就喊「賓果」", chip: "麻將" },
+    { t: "17:55", ic: "🀄", h: "麻將賓果", ml: "Mahjong Bingo · Bingo mạt chược", d: "拿出麻將紙！連成一條線就喊「賓果」", chip: "麻將", mood: "game" },
     { t: "18:20", ic: "🎁", h: "抽獎 第1～3輪", ml: "Lucky Draw · Bốc thăm", d: "Yang ・ Mark ・ CC　｜　🎟️ 全民大樂透巡桌開賣！", chip: "抽獎①", draw: true },
     { t: "18:35", ic: "🤝", h: "感謝貴賓", ml: "Our Guests & Sponsors · Cảm ơn quý khách", d: "介紹客戶與贊助廠商", chip: "貴賓" },
     { t: "18:40", ic: "🎁", h: "抽獎 第4～6輪", ml: "Lucky Draw · Bốc thăm", d: "小Eric ・ Doris ・ Jerry", chip: "抽獎②", draw: true },
@@ -64,7 +66,7 @@ window.WEIYA = {
     { t: "19:51", ic: "🎟️", h: "全民大樂透開獎", ml: "Lottery Draw · Xổ số", d: "請拿出存根，主持人唸票號", chip: "樂透", draw: true },
     { t: "19:56", ic: "🏆", h: "壓軸頭獎", ml: "Grand Prize · Giải đặc biệt", d: "Vincent 抽頭獎！全場一起集氣！", chip: "頭獎", grand: true },
     { t: "20:02", ic: "💰", h: "主管加碼 13 抽", ml: "Bonus Draw · Bốc thăm thêm", d: "還沒結束！主管加碼紅包", chip: "加碼", draw: true },
-    { t: "20:20", ic: "🙏", h: "感謝蒞臨", ml: "Thank you · Cảm ơn", d: "得獎的同仁請到工作區簽名領獎", chip: "散場" }
+    { t: "20:20", ic: "🙏", h: "感謝蒞臨", ml: "Thank you · Cảm ơn", d: "得獎的同仁請到工作區簽名領獎", chip: "散場", moodTag: "" }
   ],
 
   // 頭獎畫面上的獎項文字

@@ -50,6 +50,63 @@ main{flex:1;display:flex;align-items:center;justify-content:center;text-align:ce
 .card.hasRules .ml{margin-top:.8vh}
 .card.hasRules .desc{display:none}
 .rules{list-style:none;counter-reset:r;margin:3vh auto 0;padding:0;display:inline-block;text-align:left}
+/* ===== 三種氛圍：mood-dine 用餐／mood-draw 抽獎／mood-game 遊戲 ===== */
+#meter,#goal{display:none!important}
+.layer{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity 1.4s ease}
+#skyDraw{background:radial-gradient(110% 90% at 50% 42%,#e2321f 0%,#9a0d14 42%,#2e0307 100%)}
+#skyGame{background:radial-gradient(130% 110% at 50% 55%,#4a0b24 0%,#1c0614 50%,#06020b 100%)}
+body.mood-draw #skyDraw,body.mood-game #skyGame{opacity:1}
+/* 抽獎：背後旋轉的金色光芒 */
+#rays{z-index:1;display:flex;align-items:center;justify-content:center}
+#rays i{width:170vmax;height:170vmax;flex:none;background:repeating-conic-gradient(rgba(255,214,90,.20) 0 7deg,transparent 7deg 20deg);animation:spin 40s linear infinite;-webkit-mask:radial-gradient(circle,#000 8%,transparent 58%);mask:radial-gradient(circle,#000 8%,transparent 58%)}
+body.mood-draw #rays{opacity:1}
+/* 遊戲：斜向速度線＋脈動霓虹框 */
+#speed{z-index:1;background:repeating-linear-gradient(105deg,transparent 0 7vw,rgba(255,190,70,.07) 7vw 7.25vw,transparent 7.25vw 11vw,rgba(255,70,120,.06) 11vw 11.2vw);background-size:200% 100%;animation:speed 2.2s linear infinite}
+@keyframes speed{to{background-position:-60vw 0}}
+body.mood-game #speed{opacity:1}
+/* 用餐：底部祥雲緩緩飄動 */
+#clouds{z-index:2}
+#clouds svg{position:absolute;bottom:-2vh;width:46vw;height:auto;opacity:.5;animation:drift 18s ease-in-out infinite alternate}
+#clouds svg.l{left:-6vw}#clouds svg.r{right:-6vw;transform:scaleX(-1);animation-delay:-9s}
+@keyframes drift{to{translate:4vw -1vh}}
+body.mood-dine #clouds,body.mood-draw #clouds{opacity:1}
+/* 金色外框 */
+#frame{z-index:4;opacity:1;inset:1.4vh;border:.35vh solid rgba(245,196,81,.55);border-radius:2.2vh;box-shadow:inset 0 0 3vh rgba(245,196,81,.18),0 0 2vh rgba(245,196,81,.15)}
+#frame::before,#frame::after{content:"";position:absolute;width:9vh;height:9vh;border:.6vh solid var(--gold);border-radius:1.2vh}
+#frame::before{left:-.9vh;top:-.9vh;border-right:0;border-bottom:0}
+#frame::after{right:-.9vh;bottom:-.9vh;border-left:0;border-top:0}
+body.mood-game #frame{border-color:rgba(255,90,140,.7);animation:pulse 1.1s ease-in-out infinite}
+body.mood-game #frame::before,body.mood-game #frame::after{border-color:#ff6aa0}
+@keyframes pulse{50%{box-shadow:inset 0 0 6vh rgba(255,80,140,.35),0 0 4vh rgba(255,80,140,.4)}}
+/* 鞭炮串（抽獎時出現在燈籠旁） */
+.crackers{position:fixed;top:0;z-index:2;width:2.4vh;height:34vh;transform-origin:50% 0;animation:swing 2.6s ease-in-out infinite;opacity:0;transition:opacity 1s;
+  background:linear-gradient(90deg,transparent 45%,#e6b84a 45% 55%,transparent 55%) 0 0/100% 100% no-repeat,repeating-linear-gradient(180deg,#d0101c 0 3vh,#f5c451 3vh 3.4vh,transparent 3.4vh 4.2vh);border-radius:.6vh}
+.crackers.l{left:12vw;animation-delay:-.8s}.crackers.r{right:12vw;animation-delay:-2s}
+body.mood-draw .crackers{opacity:1}
+body.mood-game .lantern{opacity:.35;transition:opacity 1s}
+/* 氛圍標籤 */
+#moodTag{position:fixed;left:50%;top:3.2vh;transform:translateX(-50%);z-index:4;font:900 2.2vh "Noto Sans TC";letter-spacing:.3em;padding:.7vh 2.6vh;border-radius:99px;color:#5a080d;background:linear-gradient(var(--gold2),var(--gold));box-shadow:0 0 2.5vh rgba(255,200,80,.5);transition:all .6s}
+body.mood-game #moodTag{color:#fff;background:linear-gradient(#ff5d8f,#c2185b);box-shadow:0 0 3vh rgba(255,80,140,.7)}
+body.mood-dine #moodTag{background:rgba(0,0,0,.35);color:var(--gold2);box-shadow:none;border:.15vh solid rgba(245,196,81,.45)}
+/* 卡片：圖示放進金色圓章、說明放進紅色緞帶 */
+.card .icon{display:inline-flex;align-items:center;justify-content:center;width:22vh;height:22vh;border-radius:50%;font-size:12vh;margin:0 auto 1.6vh;background:radial-gradient(circle at 50% 35%,#fff3c4,#f5c451 55%,#b8770f);box-shadow:0 0 0 .8vh rgba(255,231,160,.35),0 0 0 1.6vh rgba(179,20,29,.55),0 1.5vh 4vh rgba(0,0,0,.45)}
+body.mood-dine .card .icon{background:radial-gradient(circle at 50% 35%,#fff8e6,#f1d79a 60%,#c99a45);width:19vh;height:19vh;font-size:10.5vh;animation-duration:3.6s}
+body.mood-game .card .icon{background:radial-gradient(circle at 50% 35%,#5a1030,#2a0716 70%);box-shadow:0 0 0 .6vh #ff6aa0,0 0 4vh rgba(255,80,140,.8);animation:beat .55s ease-in-out infinite}
+@keyframes beat{50%{transform:scale(1.08)}}
+.card .desc{display:inline-block;padding:1.1vh 6vh;background:linear-gradient(90deg,transparent,rgba(179,20,29,.9) 12%,rgba(179,20,29,.9) 88%,transparent)}
+body.mood-game .card .desc{background:linear-gradient(90deg,transparent,rgba(194,24,91,.85) 12%,rgba(194,24,91,.85) 88%,transparent)}
+body.mood-draw .card h1{background:linear-gradient(110deg,#fff6d6 20%,#f5c451 40%,#fffbe8 50%,#f5c451 60%,#c98a1a 80%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;animation:shine 2.6s linear infinite}
+@keyframes shine{to{background-position:-250% 0}}
+body.mood-game .card h1{background:linear-gradient(180deg,#fff 10%,#ffd1e2 50%,#ff5d8f);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 .5vh 0 #3a0a1a) drop-shadow(0 0 2.5vh rgba(255,80,140,.6))}
+body.mood-dine .card h1{font-size:11vh}
+/* 頭獎集氣：中間的能量圈（取代原本下方的讀取條） */
+#charge{position:fixed;left:50%;top:50%;z-index:6;width:46vh;height:46vh;margin:-23vh 0 0 -23vh;border-radius:50%;display:none;align-items:center;justify-content:center;flex-direction:column;
+  background:conic-gradient(#ffd23f calc(var(--p)*360deg),rgba(0,0,0,.45) 0);box-shadow:0 0 calc(4vh + var(--p)*10vh) rgba(255,170,40,.9)}
+#charge::before{content:"";position:absolute;inset:3vh;border-radius:50%;background:radial-gradient(circle,#7a0a10,#2a0306)}
+#charge b{position:relative;font:900 14vh/1 "Noto Serif TC";color:#fff;text-shadow:0 0 3vh #ffb21e}
+#charge small{position:relative;font:900 2.6vh "Noto Sans TC";color:var(--gold2);letter-spacing:.3em;margin-top:1vh}
+body.charging #charge{display:flex}
+body.charging main{visibility:hidden}
 body.noFlow .flow{display:none}
 body.noTime .card .time{display:none}
 body.rulesOn #meter,body.rulesOn #goal{display:none}
@@ -125,9 +182,21 @@ body.rulesOn main{padding-bottom:3vh}
 </head>
 <body>
 <div id="sky"></div>
+<div class="layer" id="skyDraw"></div>
+<div class="layer" id="skyGame"></div>
+<div class="layer" id="rays"><i></i></div>
+<div class="layer" id="speed"></div>
+<div class="layer" id="clouds">
+  <svg class="l" viewBox="0 0 600 220"><g fill="none" stroke="#f5c451" stroke-width="7" stroke-linecap="round"><path d="M20 200 C40 140 110 130 140 165 C150 110 230 95 260 150 C280 90 380 80 400 150 C430 110 520 120 540 175 C565 160 590 175 595 200"/><path d="M150 168 C170 150 200 152 210 172 M300 150 C320 128 360 132 368 160 M430 160 C450 145 480 150 486 175"/><path d="M60 205 C80 185 110 188 118 205"/></g><path d="M20 200 C40 140 110 130 140 165 C150 110 230 95 260 150 C280 90 380 80 400 150 C430 110 520 120 540 175 C565 160 590 175 595 200 Z" fill="rgba(245,196,81,.12)"/></svg>
+  <svg class="r" viewBox="0 0 600 220"><g fill="none" stroke="#f5c451" stroke-width="7" stroke-linecap="round"><path d="M20 200 C40 140 110 130 140 165 C150 110 230 95 260 150 C280 90 380 80 400 150 C430 110 520 120 540 175 C565 160 590 175 595 200"/><path d="M150 168 C170 150 200 152 210 172 M300 150 C320 128 360 132 368 160 M430 160 C450 145 480 150 486 175"/></g><path d="M20 200 C40 140 110 130 140 165 C150 110 230 95 260 150 C280 90 380 80 400 150 C430 110 520 120 540 175 C565 160 590 175 595 200 Z" fill="rgba(245,196,81,.12)"/></svg>
+</div>
+<div class="layer" id="frame"></div>
 <canvas id="amb"></canvas>
 <div class="lantern l"><i></i><b></b><u></u></div>
 <div class="lantern r"><i></i><b></b><u></u></div>
+<div class="crackers l"></div><div class="crackers r"></div>
+<div id="moodTag"></div>
+<div id="charge"><b id="cpct">0%</b><small>頭獎能量</small></div>
 
 <div class="wrap">
   <header>
@@ -163,6 +232,7 @@ body.rulesOn main{padding-bottom:3vh}
 <div id="gate"><div class="gbox" id="gbox"><h2>尾牙主持大螢幕</h2><p>連線中…</p></div></div>
 
 <script src="config.js"></script>
+<script src="festive.js"></script>
 <script type="module">
 import { createBus } from './bus.js';
 'use strict';
@@ -180,6 +250,11 @@ document.body.classList.toggle('noTime', C.showTime === false);
 const LAST = STAGES.length - 1, PRE = 0.9;
 // 頭獎那一段（頭獎後面還可以有加碼、散場）
 const GI = (() => { const i = STAGES.findIndex(s => s.grand); return i < 0 ? LAST : i; })();
+// 三種氛圍：dine 用餐、draw 抽獎、game 遊戲（stage 可以用 mood 指定）
+const moodOf = s => s.mood || ((s.game || s.rules) ? 'game' : (s.draw || s.grand) ? 'draw' : 'dine');
+const MOOD_TAG = { dine: '🍽 用餐時間', draw: '🎁 抽獎時間', game: '🎮 遊戲時間' };
+const MOOD_MUSIC = { dine: 'dine', draw: 'party', game: 'game' };
+let MOOD = 'dine';
 let idx = 0, p = 0, target = 0, charging = false, exploded = false;
 let inGame = false; const opened = new Set();
 
@@ -194,6 +269,10 @@ function render() {
   const tag = s.game ? `<div class="tag">${esc(s.tag || '📱 掃大螢幕 QR Code 加入')}</div>` : '';
   $('main').innerHTML = `<div class="card${rules ? ' hasRules' : ''}"><div class="time">${esc(s.t)}</div><span class="icon">${esc(s.ic)}</span><h1>${esc(s.h)}</h1><div class="ml">${esc(s.ml)}</div><div class="desc">${esc(s.d)}</div>${rules}${tag}</div>`;
   document.body.classList.toggle('rulesOn', !!rules);
+  MOOD = moodOf(s);
+  for (const m of ['dine', 'draw', 'game']) document.body.classList.toggle('mood-' + m, m === MOOD);
+  const mt = s.moodTag !== undefined ? s.moodTag : MOOD_TAG[MOOD];
+  $('moodTag').textContent = mt || ''; $('moodTag').style.display = mt ? '' : 'none';
   target = stageP(idx);
   $('hintline').textContent = s.grand ? (exploded ? '' : '按 → 開始集氣衝刺！') : (idx < GI ? `再 ${GI - idx} 段就開頭獎` : '');
   dirty();
@@ -243,7 +322,7 @@ function endCine() {
   setTimeout(() => { try { v.pause(); } catch (e) {} $('cine').classList.remove('on'); arrive(); setTimeout(() => { cine = 0; dirty(); }, 1300); }, 900);
 }
 function startCharge() {
-  charging = true; dirty(); $('hintline').textContent = '🔥 能量灌注中… 🔥'; AU.fade(.8); AU.riser(9);
+  charging = true; document.body.classList.add('charging'); dirty(); $('hintline').textContent = '🔥 能量灌注中… 🔥'; AU.fade(.8); AU.riser(9);
   const from = p, dur = 9000, t0 = performance.now();
   (function step(t) {
     const k = Math.min(1, (t - t0) / dur);
@@ -266,7 +345,7 @@ function countdown() {
   tick();
 }
 function explode() {
-  document.body.classList.remove('shake'); $('sky').style.filter = ''; AU.boom();
+  document.body.classList.remove('shake', 'charging'); $('sky').style.filter = ''; AU.boom();
   const f = $('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
   FX.shock(); FX.grandShow();
   document.body.classList.add('big'); $('main').style.visibility = 'hidden'; setTimeout(() => $('grand').classList.add('on'), 250);
@@ -276,6 +355,7 @@ function loop() {
   p += (target - p) * (charging ? 1 : .04);
   $('fill').style.width = (p * 100).toFixed(2) + '%';
   $('pct').textContent = Math.floor(p * 100 + .0001) + '%';
+  if (charging) $('cpct').textContent = Math.floor(p * 100 + .0001) + '%';
   document.documentElement.style.setProperty('--p', p.toFixed(3));
   const r = $('fill').parentElement.getBoundingClientRect(); const g = $('goal');
   g.style.left = r.right + 'px'; g.style.top = (r.top + r.height / 2) + 'px';
@@ -296,7 +376,8 @@ const FX = (function () {
   function firework() { const x = R(.1, .9) * W, y = R(.12, .5) * H; add(PX, { k: 'rise', x, y: H + 10, tx: x, ty: y, vy: -R(900, 1200) * (H / 900), life: 3, s: 3, c: '#fff1a8', onDone: () => burst(x, y, R(80, 130)) }); }
   function burstShow(lv) { for (let i = 0; i < lv * 2; i++) setTimeout(firework, i * 300); if (lv >= 3) coins(60 * lv); }
   function coins(n) { for (let i = 0; i < n; i++) add(PX, { k: 'coin', x: R(0, W), y: -R(20, H), vx: R(-30, 30), vy: R(260, 520) * (H / 900), g: 140, life: 5, s: R(.022, .042) * H, spin: R(4, 10) }); }
-  function sparkAtBar(n) { const b = $('fill').getBoundingClientRect(); for (let i = 0; i < n; i++) { const a = R(-2.6, -.5); const v = R(150, 520) * (H / 900); add(PX, { k: 'dot', x: b.right, y: b.top + R(0, b.height), vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 500, drag: .6, life: R(.5, 1.1), s: R(1.5, 4), c: pick(['#ffd23f', '#fff1a8', '#ff9500', '#fff']) }); } }
+  // 集氣時從中間能量圈的邊緣往外噴火花
+  function sparkAtBar(n) { const b = $('charge').getBoundingClientRect(), cx = b.left + b.width / 2, cy = b.top + b.height / 2, rr = b.width / 2; for (let i = 0; i < n; i++) { const a = R(0, 6.283); const v = R(150, 520) * (H / 900); add(PX, { k: 'dot', x: cx + Math.cos(a) * rr, y: cy + Math.sin(a) * rr, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 300, drag: .6, life: R(.5, 1.1), s: R(1.5, 4), c: pick(['#ffd23f', '#fff1a8', '#ff9500', '#fff']) }); } }
   function shock() { add(PX, { k: 'ring', x: W / 2, y: H / 2, life: 1.2, s: 0 }); add(PX, { k: 'ring', x: W / 2, y: H / 2, life: 1.6, s: 0, delay: .15 });
     for (let i = 0; i < 500; i++) { const a = R(0, 6.283), v = R(300, 1500) * (H / 900); add(PX, { k: 'dot', x: W / 2, y: H / 2, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 220, drag: 1.4, life: R(1.4, 2.8), s: R(2, 6), c: pick(COL) }); } }
   function confetti(n) { for (let i = 0; i < n; i++) add(PX, { k: 'rect', x: R(0, W), y: -R(10, H * .8), vx: R(-60, 60), vy: R(160, 360) * (H / 900), g: 30, life: 6, s: R(.008, .016) * H, c: pick(COL), rot: R(0, 6), vr: R(-8, 8), sway: R(20, 60) }); }
@@ -305,8 +386,21 @@ const FX = (function () {
     let n = 0; const iv = setInterval(() => { firework(); if (++n > 40) clearInterval(iv); }, 700); }
   let acc = 0;
   function ambient(dt) {
-    acc += dt * (3 + p * 40 + (charging ? 40 : 0));
+    // 用餐：零星金光和小燈籠慢慢飄；抽獎：金幣、紅包雨；遊戲：火花快速往上竄
+    const rate = charging ? 45 : MOOD === 'draw' ? 14 : MOOD === 'game' ? 16 : 3.5;
+    acc += dt * rate;
     while (acc > 1) { acc--; const r = Math.random();
+      if (MOOD === 'game' && !charging) {
+        if (r < .8) add(PA, { k: 'glow', x: R(0, W), y: H + 10, vx: R(-30, 30), vy: -R(260, 520) * (H / 900), life: R(2, 3.5), s: R(1.2, 3), c: pick(['#ff6aa0', '#ffd23f', '#fff1a8', '#ff9a3c']) });
+        else add(PA, { k: 'img', ch: pick(['⭐', '✨', '🎯']), x: R(0, W), y: H + 30, vx: R(-20, 20), vy: -R(160, 300) * (H / 900), life: 6, s: R(.025, .04) * H, rot: 0, vr: R(-2, 2) });
+        continue;
+      }
+      if (MOOD === 'dine' && !charging) {
+        if (r < .55) add(PA, { k: 'glow', x: R(0, W), y: H + 10, vx: R(-8, 8), vy: -R(20, 55) * (H / 900), life: R(8, 14), s: R(1.5, 3.5), c: pick(['#ffd23f', '#ff9a3c', '#fff1a8']) });
+        else if (r < .8) add(PA, { k: 'img', ch: pick(['🏮', '🍊', '🌸']), x: R(0, W), y: -40, vx: 0, vy: R(35, 70) * (H / 900), life: 22, s: R(.025, .04) * H, rot: R(-.2, .2), vr: R(-.3, .3), sway: R(15, 35) });
+        else add(PA, { k: 'coin', x: R(0, W), y: -30, vx: R(-10, 10), vy: R(60, 110) * (H / 900), life: 16, s: R(.012, .02) * H, spin: R(2, 4) });
+        continue;
+      }
       if (r < .45) add(PA, { k: 'coin', x: R(0, W), y: -30, vx: R(-15, 15), vy: R(90, 200) * (H / 900), life: 12, s: R(.014, .026) * H, spin: R(3, 7) });
       else if (r < .65) add(PA, { k: 'img', ch: pick(['🧧', '🧧', '🍊', '✨']), x: R(0, W), y: -40, vx: 0, vy: R(70, 150) * (H / 900), life: 14, s: R(.028, .045) * H, rot: R(-.3, .3), vr: R(-.6, .6), sway: R(20, 50) });
       else add(PA, { k: 'glow', x: R(0, W), y: H + 10, vx: R(-10, 10), vy: -R(30, 90) * (H / 900), life: R(5, 10), s: R(1, 3), c: pick(['#ffd23f', '#ff9a3c', '#fff1a8']) });
@@ -339,40 +433,25 @@ const FX = (function () {
 
 // ===== 音樂（原創合成）＋ 音量 =====
 let VOL = 80; try { const v = +localStorage.getItem('weiyaVol'); if (v >= 0 && v <= 100 && localStorage.getItem('weiyaVol') !== null) VOL = v; } catch (e) {}
+// 喜慶過年風：鑼鼓、嗩吶、鞭炮（festive.js，原創即時合成）
 const AU = (function () {
-  let ctx, master, gP, gG, on = true, cur = 'party', step = 0, nextT = 0, userGame = null, elT;
-  const N = n => 440 * Math.pow(2, (n - 69) / 12);
-  const PM = [72, 0, 69, 0, 67, 0, 64, 67, 69, 0, 67, 0, 64, 0, 62, 0, 64, 0, 67, 0, 69, 0, 72, 69, 67, 0, 64, 0, 62, 64, 60, 0], PB = [36, 43, 45, 43];
+  const FA = window.FestiveAudio;
+  let unlocked = false, on = true, cur = 'party', userGame = null, elT;
   function unlock() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
-    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
-    master = ctx.createGain(); master.gain.value = VOL / 100; master.connect(ctx.destination);
-    gP = ctx.createGain(); gG = ctx.createGain(); gP.gain.value = 0; gG.gain.value = 0; gP.connect(master); gG.connect(master);
-    nextT = ctx.currentTime + .1; setInterval(sched, 60); apply(cur, 1.5);
+    if (!FA) return;
+    FA.init(); FA.setVolume(VOL / 100);
+    if (!unlocked) { unlocked = true; apply(cur, 1.5); }
   }
-  function tone(dest, f, t, d, type, vol) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .012); g.gain.exponentialRampToValueAtTime(.001, t + d); o.connect(g); g.connect(dest); o.start(t); o.stop(t + d + .05); }
-  function noise(dest, t, d, vol, hp) { const n = Math.floor(ctx.sampleRate * d), b = ctx.createBuffer(1, n, ctx.sampleRate), a = b.getChannelData(0); for (let i = 0; i < n; i++) a[i] = (Math.random() * 2 - 1) * (1 - i / n); const s = ctx.createBufferSource(); s.buffer = b; const g = ctx.createGain(); g.gain.value = vol; const f = ctx.createBiquadFilter(); f.type = hp ? 'highpass' : 'lowpass'; f.frequency.value = hp || 300; s.connect(f); f.connect(g); g.connect(dest); s.start(t); }
-  function sched() {
-    while (nextT < ctx.currentTime + .2) { const s = step % 32, t = nextT;
-      if (PM[s]) tone(gP, N(PM[s]), t, .3, 'triangle', .2); if (s % 8 === 0) tone(gP, N(PB[s / 8]), t, .55, 'sine', .3); if (s % 4 === 2) noise(gP, t, .04, .07, 7000);
-      if (s % 4 === 0) tone(gG, 55, t, .3, 'sine', .65); if (s % 4 === 2) noise(gG, t, .03, .16, 6000);
-      if (s % 8 === 0 || s % 8 === 3 || s % 8 === 6) tone(gG, N(45), t, .18, 'sawtooth', .07);
-      if (s === 16) tone(gG, N(76), t, 1.1, 'triangle', .11); if (s === 24) tone(gG, N(77), t, 1.1, 'triangle', .11);
-      step++; nextT += .15; }
-  }
-  function fadeTo(g, v, d) { const t = ctx.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(v, t + d); }
   function fadeEl(target, d) { clearInterval(elT); const a = userGame, st = a.volume, t0 = performance.now(); target *= VOL / 100; if (target > 0 && a.paused) { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); }
     elT = setInterval(() => { const k = Math.min(1, (performance.now() - t0) / (d * 1000)); a.volume = Math.max(0, Math.min(1, st + (target - st) * k)); if (k >= 1) { clearInterval(elT); if (target === 0) a.pause(); } }, 50); }
-  function apply(k, d) { cur = k; if (!ctx) return; const file = !!userGame && k === 'game';
-    fadeTo(gP, on && k === 'party' ? 1 : 0, d); fadeTo(gG, on && k === 'game' && !file ? 1 : 0, d); if (userGame) fadeEl(on && file ? 1 : 0, d); }
-  function riser(d) { if (!ctx || !on) return; const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(70, t); o.frequency.exponentialRampToValueAtTime(900, t + d); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.16, t + d); g.gain.linearRampToValueAtTime(0, t + d + .1); o.connect(g); g.connect(master); o.start(t); o.stop(t + d + .2);
-    for (let i = 0, tt = 0, gap = .6; tt < d; i++) { tone(master, 55, t + tt, .2, 'sine', .5); tt += gap; gap = Math.max(.09, gap * .92); } }
-  function boom() { if (!ctx) return; if (on) { const t = ctx.currentTime; noise(master, t, 1.6, 1, 0); tone(master, 45, t, 1.2, 'sine', .9); [60, 64, 67, 72, 76].forEach((n, i) => tone(master, N(n), t + .15 + i * .07, 2.2, 'square', .09)); }
-    setTimeout(() => apply('party', 2), 2500); }
-  return { unlock, scene: s => apply((s.game || s.grand) ? 'game' : 'party', 1.2), fade: d => apply('none', d), riser, boom,
-    isOn: () => on, ready: () => !!ctx && ctx.state === 'running',
+  function apply(k, d) { cur = k; if (!FA || !unlocked) return; const file = !!userGame && k === 'game';
+    FA.music(on && !file && (k === 'party' || k === 'game' || k === 'dine') ? k : null, d); if (userGame) fadeEl(on && file ? 1 : 0, d); }
+  function riser(d) { if (FA && unlocked && on) FA.riser(d); }
+  function boom() { if (FA && unlocked && on) FA.boom(); setTimeout(() => apply('party', 2), 3500); }
+  return { unlock, scene: s => apply(MOOD_MUSIC[moodOf(s)], 1.2), fade: d => apply('none', d), riser, boom,
+    isOn: () => on, ready: () => !!FA && FA.ready(),
     toggle() { on = !on; apply(cur, .3); return on; },
-    volume() { if (master) { const t = ctx.currentTime; master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t); master.gain.linearRampToValueAtTime(VOL / 100, t + .15); } if (userGame && !userGame.paused) userGame.volume = Math.min(1, VOL / 100); },
+    volume() { if (FA) FA.setVolume(VOL / 100); if (userGame && !userGame.paused) userGame.volume = Math.min(1, VOL / 100); },
     setGameFile(f) { if (userGame) { try { userGame.pause(); } catch (e) {} } userGame = new Audio(URL.createObjectURL(f)); userGame.loop = true; userGame.volume = 0; apply(cur, .5); } };
 })();
 // 影片本身比網頁音樂大聲很多：影片音量＝總音量 × videoVolume（config.js 可調，預設 0.4）
@@ -382,7 +461,7 @@ function setVol(v) {
   VOL = Math.max(0, Math.min(100, Math.round(+v || 0)));
   try { localStorage.setItem('weiyaVol', VOL); } catch (e) {}
   AU.volume(); $('vid').volume = vidVol();
-  for (const k in frames) { try { frames[k].contentDocument.querySelectorAll('audio,video').forEach(m => m.volume = VOL / 100); } catch (e) {} }
+  for (const k in frames) { try { frames[k].contentDocument.querySelectorAll('audio,video').forEach(m => m.volume = VOL / 100); const fa = frames[k].contentWindow.FestiveAudio; if (fa) fa.setVolume(VOL / 100); } catch (e) {} }
   dirty();
 }
 function setMusic() { $('bMus').textContent = AU.isOn() ? '🎵 音樂' : '🔇 靜音'; dirty(); }
@@ -436,6 +515,7 @@ function hookFrame(f) {
       if (k === 'pagedown' || k === 'pageup') e.preventDefault();
     }, true);
     f.contentDocument.querySelectorAll('audio,video').forEach(m => m.volume = VOL / 100);
+    const fa = f.contentWindow.FestiveAudio; if (fa) fa.setVolume(VOL / 100);
   } catch (e) {}
 }
 function openGame() {
