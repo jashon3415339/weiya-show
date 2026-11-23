@@ -253,7 +253,9 @@ const GI = (() => { const i = STAGES.findIndex(s => s.grand); return i < 0 ? LAS
 // 三種氛圍：dine 用餐、draw 抽獎、game 遊戲（stage 可以用 mood 指定）
 const moodOf = s => s.mood || ((s.game || s.rules) ? 'game' : (s.draw || s.grand) ? 'draw' : 'dine');
 const MOOD_TAG = { dine: '🍽 用餐時間', draw: '🎁 抽獎時間', game: '🎮 遊戲時間' };
-const MOOD_MUSIC = { dine: 'dine', draw: 'party', game: 'game' };
+// 每段的音樂：stage.music 指定環節代號（welcome、dine、mahjong、draw、truefalse、coins、grand、ending），沒指定就照氛圍
+const MOOD_MUSIC = { dine: 'dine', draw: 'draw', game: 'truefalse' };
+const musicOf = s => s.music || MOOD_MUSIC[moodOf(s)];
 let MOOD = 'dine';
 let idx = 0, p = 0, target = 0, charging = false, exploded = false;
 let inGame = false; const opened = new Set();
@@ -445,10 +447,10 @@ const AU = (function () {
   function fadeEl(target, d) { clearInterval(elT); const a = userGame, st = a.volume, t0 = performance.now(); target *= VOL / 100; if (target > 0 && a.paused) { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); }
     elT = setInterval(() => { const k = Math.min(1, (performance.now() - t0) / (d * 1000)); a.volume = Math.max(0, Math.min(1, st + (target - st) * k)); if (k >= 1) { clearInterval(elT); if (target === 0) a.pause(); } }, 50); }
   function apply(k, d) { cur = k; if (!FA || !unlocked) return; const file = !!userGame && k === 'game';
-    FA.music(on && !file && (k === 'party' || k === 'game' || k === 'dine') ? k : null, d); if (userGame) fadeEl(on && file ? 1 : 0, d); }
+    FA.music(on && !file && k && k !== 'none' ? k : null, d); if (userGame) fadeEl(on && file ? 1 : 0, d); }
   function riser(d) { if (FA && unlocked && on) FA.riser(d); }
-  function boom() { if (FA && unlocked && on) FA.boom(); setTimeout(() => apply('party', 2), 3500); }
-  return { unlock, scene: s => apply(MOOD_MUSIC[moodOf(s)], 1.2), fade: d => apply('none', d), riser, boom,
+  function boom() { if (FA && unlocked && on) FA.boom(); setTimeout(() => apply(musicOf(STAGES[idx]), 2), 3500); }
+  return { unlock, scene: s => apply(musicOf(s), 1.2), fade: d => apply('none', d), riser, boom,
     isOn: () => on, ready: () => !!FA && FA.ready(),
     toggle() { on = !on; apply(cur, .3); return on; },
     volume() { if (FA) FA.setVolume(VOL / 100); if (userGame && !userGame.paused) userGame.volume = Math.min(1, VOL / 100); },

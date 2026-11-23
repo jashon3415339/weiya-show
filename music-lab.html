@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>尾牙音樂設計台</title>
+<style>
+  :root { --bg:#1a0c0b; --card:#2a1513; --card2:#361b18; --line:#4a2a24; --gold:#f5c451; --gold2:#ffe7a0; --txt:#f6ede4; --dim:#b9a596; --red:#d0101c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(120% 80% at 50% 0%, #4a0b10, var(--bg) 60%); color: var(--txt); font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif; min-height: 100vh; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { margin: 0 0 6px; font-size: 28px; color: var(--gold); }
+  .lead { margin: 0 0 18px; color: var(--dim); line-height: 1.7; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 18px; padding: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+  .bar b { margin-right: 6px; color: var(--gold2); }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; padding: 8px 14px; background: var(--card2); color: var(--txt); border: 1px solid var(--line); }
+  button:hover { border-color: var(--gold); }
+  button.pri { background: linear-gradient(#ffe39a, #f2b632); color: #3b1a05; border: 0; font-weight: 800; }
+  button.stop { background: #4a1416; color: #ffd0d0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+  .slot { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; transition: border-color .2s, box-shadow .2s; }
+  .slot.playing { border-color: var(--gold); box-shadow: 0 0 18px rgba(245,196,81,.35); }
+  .slot h2 { margin: 0; font-size: 19px; color: var(--gold2); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .slot .use { font-size: 12.5px; color: var(--dim); margin: 4px 0 10px; line-height: 1.5; }
+  .row { display: grid; grid-template-columns: 72px 1fr; gap: 8px; align-items: center; margin: 7px 0; font-size: 14px; }
+  .row label { color: var(--dim); }
+  select, input[type=range] { width: 100%; }
+  select { font: inherit; font-size: 14px; padding: 6px 8px; border-radius: 8px; background: #1d0e0d; color: var(--txt); border: 1px solid var(--line); }
+  input[type=range] { accent-color: var(--gold); }
+  .val { font-variant-numeric: tabular-nums; color: var(--gold2); font-size: 13px; }
+  .btns { display: flex; gap: 8px; margin-top: 10px; }
+  .btns button { flex: 1; }
+  .out { margin-top: 22px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .out h2 { margin: 0 0 6px; font-size: 18px; color: var(--gold2); }
+  .out p { margin: 0 0 10px; color: var(--dim); font-size: 14px; line-height: 1.6; }
+  textarea { width: 100%; height: 210px; font: 13px/1.5 Consolas, monospace; background: #120807; color: #ffe7a0; border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+  .ok { color: #7dffb0; font-size: 14px; margin-left: 8px; }
+  .note { font-size: 13px; color: var(--dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎼 尾牙音樂設計台</h1>
+  <p class="lead">每個環節都可以換「旋律、主奏樂器、鑼鼓節奏、速度、和聲」。按 ▶ 試聽，換選項會馬上聽到差別。<br>
+    全部挑好後，按最下面「📋 複製設定」貼給 Claude，就會套到大螢幕上。（你的選擇會自動記在這台電腦，關掉再開還在）</p>
+
+  <div class="bar"><b>音效試聽</b>
+    <button data-sfx="drum">🥁 鼓</button><button data-sfx="chang">🔔 鏘（出題）</button><button data-sfx="tick">🪵 木魚（倒數）</button>
+    <button data-sfx="gong">🔊 大鑼（時間到）</button><button data-sfx="start">🚩 開始</button><button data-sfx="roll">🥁 鼓聲（公布前）</button>
+    <button data-sfx="fanfare">🎉 冠軍</button><button data-sfx="firecrackers">🧨 鞭炮</button>
+    <button id="riser">🔥 頭獎集氣＋爆開</button>
+    <button class="stop" id="stopAll">■ 全部停止</button>
+  </div>
+  <div class="bar"><b>音量</b><input type="range" id="vol" min="0" max="100" value="80" style="max-width:260px"><span class="val" id="volV">80</span>
+    <span class="note">（只影響這個試聽頁）</span></div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="out">
+    <h2>📋 你的選擇</h2>
+    <p>挑好後按「複製設定」，貼到跟 Claude 的對話裡就可以了。想重來可以按「全部恢復預設」。</p>
+    <textarea id="code" readonly></textarea>
+    <div class="btns" style="max-width:520px"><button class="pri" id="copy">📋 複製設定</button><button id="reset">↺ 全部恢復預設</button></div>
+    <span class="ok" id="copied"></span>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="festive.js"></script>
+<script>
+  const FA = window.FestiveAudio, O = FA.options;
+  // 每個環節用在大螢幕的哪幾段
+  const USE = {
+    welcome: '報到（16:45 大家進場）',
+    dine: '開場致詞、感謝貴賓（大家在吃飯）',
+    mahjong: '麻將賓果',
+    draw: '抽獎第 1～11 輪、最佳幸運兒、二獎、全民大樂透、主管加碼',
+    truefalse: '真的還假的（玩法說明＋遊戲中）',
+    coins: '財神撒金幣（過場影片後、遊戲中）',
+    grand: '壓軸頭獎（集氣前的等待音樂；集氣和爆開是固定音效）',
+    ending: '感謝蒞臨、散場簽領'
+  };
+  const KEY = 'weiyaMusicLab';
+  let picks = {};
+  try { picks = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const base = FA.slots();
+  const cur = k => Object.assign({}, base[k], picks[k] || {});
+  let playing = null;
+
+  function opts(map, v) { return Object.entries(map).map(([k, n]) => `<option value="${k}"${k === v ? ' selected' : ''}>${n}</option>`).join(''); }
+  function card(k) {
+    const s = cur(k);
+    return `<div class="slot" id="s_${k}"><h2>${s.name}<span class="val" id="bv_${k}"></span></h2>
+      <div class="use">用在：${USE[k] || ''}</div>
+      <div class="row"><label>旋律</label><select data-k="${k}" data-f="mel">${opts(O.mel, s.mel)}</select></div>
+      <div class="row"><label>主奏樂器</label><select data-k="${k}" data-f="lead">${opts(O.lead, s.lead)}</select></div>
+      <div class="row"><label>鑼鼓節奏</label><select data-k="${k}" data-f="perc">${opts(O.perc, s.perc)}</select></div>
+      <div class="row"><label>速度</label><div><input type="range" min="60" max="180" step="2" value="${s.bpm}" data-k="${k}" data-f="bpm"><span class="val" id="bpm_${k}">${s.bpm} BPM</span></div></div>
+      <div class="row"><label>音量</label><div><input type="range" min="30" max="100" step="5" value="${Math.round((s.vol == null ? 1 : s.vol) * 100)}" data-k="${k}" data-f="vol"><span class="val" id="vv_${k}">${Math.round((s.vol == null ? 1 : s.vol) * 100)}%</span></div></div>
+      <div class="row"><label>和聲鋪底</label><div><input type="checkbox" data-k="${k}" data-f="pad"${s.pad ? ' checked' : ''}> <span class="note">背景加一層柔和的和弦</span></div></div>
+      <div class="btns"><button class="pri" data-play="${k}">▶ 試聽</button><button class="stop" data-stop="${k}">■ 停</button><button data-def="${k}">↺ 預設</button></div></div>`;
+  }
+  function render() { document.getElementById('grid').innerHTML = Object.keys(base).map(card).join(''); bind(); out(); mark(); }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(picks)); } catch (e) {} out(); }
+  function set(k, f, v) {
+    picks[k] = Object.assign({}, picks[k] || {}, { [f]: v }); save();
+    if (f === 'bpm') document.getElementById('bpm_' + k).textContent = v + ' BPM';
+    if (f === 'vol') document.getElementById('vv_' + k).textContent = Math.round(v * 100) + '%';
+    if (playing === k) FA.playSpec(cur(k), .25);
+  }
+  function mark() { for (const k in base) { const el = document.getElementById('s_' + k); if (el) el.classList.toggle('playing', playing === k); } }
+  function bind() {
+    document.querySelectorAll('[data-f]').forEach(el => {
+      const k = el.dataset.k, f = el.dataset.f;
+      el.oninput = el.onchange = () => set(k, f, f === 'pad' ? el.checked : f === 'bpm' ? +el.value : f === 'vol' ? +el.value / 100 : el.value);
+    });
+    document.querySelectorAll('[data-play]').forEach(b => b.onclick = () => { FA.init(); playing = b.dataset.play; FA.playSpec(cur(playing), .4); mark(); });
+    document.querySelectorAll('[data-stop]').forEach(b => b.onclick = () => { if (playing === b.dataset.stop) { FA.playSpec(null, .4); playing = null; mark(); } });
+    document.querySelectorAll('[data-def]').forEach(b => b.onclick = () => { delete picks[b.dataset.def]; save(); const was = playing; render(); if (was) { playing = was; FA.playSpec(cur(was), .3); mark(); } });
+  }
+  function out() {
+    const o = {};
+    for (const k in base) { const s = cur(k); o[k] = { mel: s.mel, lead: s.lead, perc: s.perc, bpm: s.bpm, pad: !!s.pad, vol: +(s.vol == null ? 1 : s.vol).toFixed(2) }; }
+    const lines = Object.entries(o).map(([k, v]) => `    ${k}: ${JSON.stringify(v).replace(/"(\w+)":/g, '$1: ')},  // ${base[k].name}`);
+    document.getElementById('code').value = '尾牙音樂設定：\n  music: {\n' + lines.join('\n') + '\n  },';
+  }
+  document.querySelectorAll('[data-sfx]').forEach(b => b.onclick = () => { FA.init(); FA.sfx[b.dataset.sfx](); });
+  document.getElementById('riser').onclick = () => { FA.init(); FA.riser(9); setTimeout(() => FA.boom(), 9000 + 2700); };
+  document.getElementById('stopAll').onclick = () => { FA.playSpec(null, .3); playing = null; mark(); };
+  const vol = document.getElementById('vol');
+  vol.oninput = () => { document.getElementById('volV').textContent = vol.value; FA.setVolume(vol.value / 100); };
+  FA.setVolume(.8);
+  document.getElementById('copy').onclick = async () => { const t = document.getElementById('code'); try { await navigator.clipboard.writeText(t.value); } catch (e) { t.select(); document.execCommand('copy'); } document.getElementById('copied').textContent = '✓ 已複製，貼給 Claude 就好'; };
+  document.getElementById('reset').onclick = () => { if (!confirm('全部恢復預設？')) return; picks = {}; save(); FA.playSpec(null, .3); playing = null; render(); };
+  render();
+</script>
+</body>
+</html>
