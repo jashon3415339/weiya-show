@@ -427,6 +427,12 @@ const TRK = (function () {
   a.addEventListener('ended', () => { if (mode === 'loop' || mode === 'board') { a.currentTime = cfg().loopFrom || 12; mode = 'loop'; a.play().catch(() => {}); } });
   async function load() {
     try { const f = await idbGet('tfTrack'); if (f) { a.src = URL.createObjectURL(f); ok = true; $('bTrk').textContent = '🎵 音檔已載入'; const g = $('gTrk'); if (g) g.textContent = '🎵 真的還假的音檔：已載入'; } } catch (e) {}
+    // 這台電腦沒有手動載入過 → 用網站上的檔案（config.js 的 tfTrack.src）
+    if (!ok && cfg().src) {
+      a.src = cfg().src; ok = true; $('bTrk').textContent = '🎵 音檔已載入（網站）';
+      const g = $('gTrk'); if (g) g.textContent = '🎵 真的還假的音檔：已載入';
+      a.addEventListener('error', () => { ok = false; $('bTrk').textContent = '🎵 載入音檔（網站上的檔案讀不到）'; }, { once: true });
+    }
   }
   return {
     get ok() { return ok; }, cfg, load, el: a,
