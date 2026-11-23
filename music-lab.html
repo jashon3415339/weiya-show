@@ -48,7 +48,9 @@
     <button data-sfx="drum">🥁 鼓</button><button data-sfx="chang">🔔 鏘（出題）</button><button data-sfx="tick">🪵 木魚（倒數）</button>
     <button data-sfx="gong">🔊 大鑼（時間到）</button><button data-sfx="start">🚩 開始</button><button data-sfx="roll">🥁 鼓聲（公布前）</button>
     <button data-sfx="fanfare">🎉 冠軍</button><button data-sfx="firecrackers">🧨 鞭炮</button>
-    <button id="riser">🔥 頭獎集氣＋爆開</button>
+    <button data-sfx="reveal">🎉 抽獎揭曉</button><button data-sfx="revealElegant">✨ 幸運兒揭曉</button><button data-sfx="revealBig">💥 二獎揭曉</button>
+    <button data-sfx="applause">👏 掌聲</button><button data-sfx="bingo">🀄 賓果</button><button data-sfx="coin">🪙 金幣</button>
+    <button id="riser">🏆 頭獎揭曉</button>
     <button class="stop" id="stopAll">■ 全部停止</button>
   </div>
   <div class="bar"><b>音量</b><input type="range" id="vol" min="0" max="100" value="80" style="max-width:260px"><span class="val" id="volV">80</span>
@@ -71,13 +73,25 @@
   const FA = window.FestiveAudio, O = FA.options;
   // 每個環節用在大螢幕的哪幾段
   const USE = {
-    welcome: '報到（16:45 大家進場）',
-    dine: '開場致詞、感謝貴賓（大家在吃飯）',
-    mahjong: '麻將賓果',
-    draw: '抽獎第 1～11 輪、最佳幸運兒、二獎、全民大樂透、主管加碼',
-    truefalse: '真的還假的（玩法說明＋遊戲中）',
-    coins: '財神撒金幣（過場影片後、遊戲中）',
-    grand: '壓軸頭獎（集氣前的等待音樂；集氣和爆開是固定音效）',
+    welcome: '報到（16:45 大家進場）— 你說這首可以，維持不變',
+    speech: '開場致詞（主持人按「🎤 講話」會降到很小聲）',
+    dine: '感謝貴賓',
+    mahjong: '麻將賓果（小聲，不蓋過唱牌）',
+    drawPrep: '每一輪抽獎、樂透的「準備」階段',
+    drawA: '抽獎中：第 1、4、7、10 輪、樂透',
+    drawB: '抽獎中：第 2、5、8、11 輪',
+    drawC: '抽獎中：第 3、6、9 輪；加碼抽獎中',
+    luckyPrep: '最佳幸運兒：揭曉前',
+    luckyWin: '最佳幸運兒：揭曉後的慶祝',
+    secondPrep: '二獎：準備',
+    secondDraw: '二獎：抽獎中',
+    truefalse: '真的還假的：只在沒載入《Way Back Then》音檔時才用',
+    coins: '財神撒金幣：遊戲中',
+    coinsFinal: '財神撒金幣：最後 10 秒',
+    grandWait: '頭獎：揭曉前的等待',
+    grandWin: '頭獎：揭曉高潮（一小段）',
+    award: '頭獎：上台領獎拍照（小聲）',
+    bonus: '「有沒有人要加碼？」懸念',
     ending: '感謝蒞臨、散場簽領'
   };
   const KEY = 'weiyaMusicLab';
@@ -97,7 +111,7 @@
       <div class="row"><label>鑼鼓節奏</label><select data-k="${k}" data-f="perc">${opts(O.perc, s.perc)}</select></div>
       <div class="row"><label>速度</label><div><input type="range" min="60" max="180" step="2" value="${s.bpm}" data-k="${k}" data-f="bpm"><span class="val" id="bpm_${k}">${s.bpm} BPM</span></div></div>
       <div class="row"><label>音量</label><div><input type="range" min="30" max="100" step="5" value="${Math.round((s.vol == null ? 1 : s.vol) * 100)}" data-k="${k}" data-f="vol"><span class="val" id="vv_${k}">${Math.round((s.vol == null ? 1 : s.vol) * 100)}%</span></div></div>
-      <div class="row"><label>和聲鋪底</label><div><input type="checkbox" data-k="${k}" data-f="pad"${s.pad ? ' checked' : ''}> <span class="note">背景加一層柔和的和弦</span></div></div>
+      <div class="row"><label>和聲鋪底</label><select data-k="${k}" data-f="pad">${opts(O.pad, String(s.pad))}</select></div>
       <div class="btns"><button class="pri" data-play="${k}">▶ 試聽</button><button class="stop" data-stop="${k}">■ 停</button><button data-def="${k}">↺ 預設</button></div></div>`;
   }
   function render() { document.getElementById('grid').innerHTML = Object.keys(base).map(card).join(''); bind(); out(); mark(); }
@@ -112,7 +126,7 @@
   function bind() {
     document.querySelectorAll('[data-f]').forEach(el => {
       const k = el.dataset.k, f = el.dataset.f;
-      el.oninput = el.onchange = () => set(k, f, f === 'pad' ? el.checked : f === 'bpm' ? +el.value : f === 'vol' ? +el.value / 100 : el.value);
+      el.oninput = el.onchange = () => set(k, f, f === 'pad' ? (el.value === 'true' ? true : el.value === 'false' ? false : el.value) : f === 'bpm' ? +el.value : f === 'vol' ? +el.value / 100 : el.value);
     });
     document.querySelectorAll('[data-play]').forEach(b => b.onclick = () => { FA.init(); playing = b.dataset.play; FA.playSpec(cur(playing), .4); mark(); });
     document.querySelectorAll('[data-stop]').forEach(b => b.onclick = () => { if (playing === b.dataset.stop) { FA.playSpec(null, .4); playing = null; mark(); } });
@@ -120,12 +134,12 @@
   }
   function out() {
     const o = {};
-    for (const k in base) { const s = cur(k); o[k] = { mel: s.mel, lead: s.lead, perc: s.perc, bpm: s.bpm, pad: !!s.pad, vol: +(s.vol == null ? 1 : s.vol).toFixed(2) }; }
+    for (const k in base) { const s = cur(k); o[k] = { mel: s.mel, lead: s.lead, perc: s.perc, bpm: s.bpm, pad: s.pad === 'strings' ? 'strings' : !!s.pad, vol: +(s.vol == null ? 1 : s.vol).toFixed(2) }; }
     const lines = Object.entries(o).map(([k, v]) => `    ${k}: ${JSON.stringify(v).replace(/"(\w+)":/g, '$1: ')},  // ${base[k].name}`);
     document.getElementById('code').value = '尾牙音樂設定：\n  music: {\n' + lines.join('\n') + '\n  },';
   }
   document.querySelectorAll('[data-sfx]').forEach(b => b.onclick = () => { FA.init(); FA.sfx[b.dataset.sfx](); });
-  document.getElementById('riser').onclick = () => { FA.init(); FA.riser(9); setTimeout(() => FA.boom(), 9000 + 2700); };
+  document.getElementById('riser').onclick = () => { FA.init(); FA.grandBuild(6); setTimeout(() => FA.grandHit(), 6000); };
   document.getElementById('stopAll').onclick = () => { FA.playSpec(null, .3); playing = null; mark(); };
   const vol = document.getElementById('vol');
   vol.oninput = () => { document.getElementById('volV').textContent = vol.value; FA.setVolume(vol.value / 100); };

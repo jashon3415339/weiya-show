@@ -98,6 +98,27 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
 .login p{color:var(--dim);margin:0 0 22px}
 .login input{display:block;width:100%;font-size:17px;padding:15px 16px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--txt);margin-bottom:10px;-webkit-user-select:text;user-select:text}
 .login .err{color:#ff9a9a;min-height:22px;margin:4px 0 8px;font-size:14px}
+/* 長按進度 */
+.btn.hold::before{transition:none}
+.btn.hold.holding::before{width:100%;transition:width var(--hold,800ms) linear}
+.btn.cool{opacity:.55;pointer-events:none}
+.warn.note2{background:#3a2a10;color:#ffe2a8}
+/* 抽獎資訊 */
+.prz{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+.prz span{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:14px}
+.prz b{color:var(--gold)}
+.phase{display:inline-block;font-size:12px;font-weight:800;padding:3px 9px;border-radius:99px;background:var(--card2);color:var(--gold2);margin-left:6px}
+/* 麻將操作板 */
+.mj{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;margin-bottom:10px}
+.mj button{aspect-ratio:3/4;border-radius:8px;background:#2a221c;border:1px solid var(--line);font:900 15px/1.05 "Noto Serif TC","PingFang TC",serif;color:#cbbfb2;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0}
+.mj button{position:relative;overflow:hidden;touch-action:manipulation}
+.mj button::before{content:"";position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(245,196,81,.5)}
+.mj button.holding::before{height:100%;transition:height var(--mjhold,800ms) linear}
+.mj button small{font-size:12px;font-weight:900;position:relative}
+.mj button.on{background:linear-gradient(#fff6dc,#f0d189);color:#2b1a08;border-color:var(--gold)}
+.mj button.on small.m{color:#b3141d}.mj button.on small.p{color:#1d4fa3}.mj button.on small.s{color:#17703a}
+.mj button.last{outline:3px solid #fff}
+.mjcnt{font-size:15px;margin:2px 0 8px}.mjcnt b{font-size:22px;color:var(--gold)}
 </style>
 </head>
 <body>
@@ -109,9 +130,14 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
 <script type="module">
 import { createBus } from './bus.js';
 const C = window.WEIYA || {};
+const HOLD = Math.max(300, +C.holdMs || 800);
+const MJ_HOLD = Math.max(300, +C.mjHoldMs || HOLD);
+document.documentElement.style.setProperty('--hold', HOLD + 'ms');
+document.documentElement.style.setProperty('--mjhold', MJ_HOLD + 'ms');
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const vib = n => { try { navigator.vibrate && navigator.vibrate(n); } catch (e) {} };
+const fmt = n => n == null ? '' : 'NT$' + Number(n).toLocaleString('en-US');
 
 let bus, user, S = null, screenT = 0, screenSeen = false, online = true, stateErr = '';
 let pending = null, holding = false, cheatHidden = false, showList = false;
@@ -130,12 +156,16 @@ function confirmBox(title, text, okLabel, ok) {
 const screenOk = () => screenSeen && (bus.now() - screenT) < (bus.demo ? 7000 : 25000);
 
 // ---------- 送指令 ----------
-const LABEL = { next: '下一段', prev: '上一段', goto: '跳段', fx: '煙火', music: '音樂開關', vol: '音量', openGame: '進入遊戲', exitGame: '離開遊戲', reloadGame: '重新載入遊戲', grand: '開頭獎', closeGrand: '收起頭獎' };
+const LABEL = { next: '下一段', prev: '上一段', goto: '跳段', fx: '煙火', music: '音樂開關', vol: '音量', openGame: '進入遊戲', exitGame: '回到流程', reloadGame: '重新載入遊戲', grand: '頭獎揭曉', award: '頒獎音樂', talk: '講話模式', applause: '掌聲', bingo: '賓果提示音' };
+let lastSent = { k: '', t: 0 };
 function send(a, v, label) {
   if (!screenOk()) { toast('大螢幕沒有連線', 'bad'); vib([30, 60, 30]); return; }
+  const k = a + ':' + JSON.stringify(v); const n = Date.now();
+  if (k === lastSent.k && n - lastSent.t < 900 && a !== 'mj') return;   // 防止同一個動作連續送出
+  lastSent = { k, t: n };
   vib(15);
   const id = bus.sendCmd(a, v);
-  pending = { id, label: label || LABEL[a] || a, t: Date.now() };
+  pending = { id, label: label || LABEL[a] || a, t: n };
   if (a !== 'vol') toast('送出：' + pending.label);
   setTimeout(() => { if (pending && pending.id === id) { toast('⚠ 大螢幕沒有回應，再按一次試試', 'bad'); pending = null; } }, 4000);
 }
@@ -145,37 +175,61 @@ function checkAck() {
   if (id !== pending.id) return;
   const l = pending.label; pending = null;
   if (r === 'disabled') { toast('⚠ 大螢幕上「' + l + '」現在不能按', 'bad'); vib([30, 60, 30]); }
-  else if (r === 'none' || r === 'blocked') { toast('⚠ 找不到這顆按鈕', 'bad'); }
+  else if (r === 'none' || r === 'blocked') toast('⚠ 這一段不能用「' + l + '」', 'bad');
+  else if (r === 'dup') toast('這張已經抽出過了', 'bad');
   else if (l !== '音量') toast('✓ ' + l, 'good');
 }
 
-// ---------- 長按 ----------
+// ---------- 長按：按住到時間才執行；提早放開或滑出按鈕就取消；一次只觸發一次 ----------
 function bindHold(root) {
-  root.querySelectorAll('.hold').forEach(b => {
+  root.querySelectorAll('.btn.hold').forEach(b => {
     let t = null;
-    const start = e => { if (b.disabled) return; e.preventDefault(); holding = true; b.classList.add('holding'); vib(10);
-      t = setTimeout(() => { t = null; b.classList.remove('holding'); holding = false; vib(40); fire(b); }, 800); };
-    const stop = () => { if (t) { clearTimeout(t); t = null; toast('要按住不放才會執行'); } b.classList.remove('holding'); if (holding) { holding = false; setTimeout(draw, 50); } };
-    b.addEventListener('pointerdown', start);
-    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+    const cancel = (msg) => { if (t) { clearTimeout(t); t = null; if (msg) toast('要按住不放才會執行'); } b.classList.remove('holding'); if (holding) { holding = false; setTimeout(draw, 50); } };
+    b.addEventListener('pointerdown', e => {
+      if (b.classList.contains('off') || b.classList.contains('cool')) return;
+      e.preventDefault(); try { b.releasePointerCapture(e.pointerId); } catch (er) {}
+      holding = true; b.classList.add('holding'); vib(10);
+      t = setTimeout(() => { t = null; b.classList.remove('holding'); holding = false; vib(40); b.classList.add('cool'); setTimeout(() => b.classList.remove('cool'), 700); fire(b); }, HOLD);
+    });
+    b.addEventListener('pointerup', () => cancel(true));
+    b.addEventListener('pointerleave', () => cancel(false));
+    b.addEventListener('pointercancel', () => cancel(false));
     b.addEventListener('contextmenu', e => e.preventDefault());
   });
-  root.querySelectorAll('[data-a]:not(.hold)').forEach(b => b.addEventListener('click', () => fire(b)));
+  // 麻將牌：一樣要長按（時間用 config.js 的 mjHoldMs，預設跟其他按鈕一樣）；已經亮的牌不能再按
+  root.querySelectorAll('[data-mj]').forEach(b => {
+    let t = null;
+    const cancel = (msg) => { if (t) { clearTimeout(t); t = null; if (msg) toast('要按住不放才會執行'); } b.classList.remove('holding'); if (holding) { holding = false; setTimeout(draw, 50); } };
+    b.addEventListener('pointerdown', e => {
+      if (b.classList.contains('on')) { toast('這張已經抽出過了', 'bad'); return; }
+      e.preventDefault(); try { b.releasePointerCapture(e.pointerId); } catch (er) {}
+      holding = true; b.classList.add('holding'); vib(10);
+      t = setTimeout(() => { t = null; b.classList.remove('holding'); holding = false; vib(40); send('mj', { op: 'add', id: b.dataset.mj }, '抽出 ' + b.dataset.l); }, MJ_HOLD);
+    });
+    b.addEventListener('pointerup', () => cancel(true));
+    b.addEventListener('pointerleave', () => cancel(false));
+    b.addEventListener('pointercancel', () => cancel(false));
+    b.addEventListener('contextmenu', e => e.preventDefault());
+  });
 }
 function fire(b) {
-  const a = b.dataset.a, v = b.dataset.v;
-  if (a === 'goto') { const i = +v, st = S.stages[i]; confirmBox('跳到「' + st.h + '」？', '大螢幕會直接切到這一段。', '跳過去', () => send('goto', i, '跳到 ' + st.chip)); return; }
-  if (a === 'game') { send('game', v, b.dataset.l || v); return; }
-  send(a, v === undefined ? undefined : (isNaN(+v) ? v : +v));
+  const a = b.dataset.a, v = b.dataset.v, cf = b.dataset.cf;
+  const go = () => {
+    if (a === 'goto') { const i = +v, st = S.stages[i]; confirmBox('跳到「' + (st.h || st.chip) + '」？', '大螢幕會直接切到這一段。', '跳過去', () => send('goto', i, '跳到 ' + st.chip)); return; }
+    if (a === 'game') { send('game', v, b.dataset.l || v); return; }
+    if (a === 'phase') { send('phase', v, b.dataset.l); return; }
+    if (a === 'mj') { send('mj', { op: v }, b.dataset.l); return; }
+    send(a, v === undefined ? undefined : (isNaN(+v) ? v : +v), b.dataset.l);
+  };
+  if (cf) confirmBox(cf, '確定要執行嗎？', '確定', go); else go();
 }
 
 // ---------- 畫面 ----------
-const btn = (a, label, cls = '', o = {}) => `<button class="btn ${cls}${o.sub ? ' stack' : ''}${o.hold ? ' hold' : ''}${o.off ? ' off' : ''}" data-a="${a}"${o.v !== undefined ? ` data-v="${esc(o.v)}"` : ''}${o.l ? ` data-l="${esc(o.l)}"` : ''}>${label}${o.hold ? '<span class="hint">長按</span>' : ''}${o.sub ? `<span class="sub">${esc(o.sub)}</span>` : ''}</button>`;
-function gbtn(G, name, label, cls, hold) {
-  const b = G && G.btn && G.btn[name]; const off = b && b.ok === false;
-  return btn('game', label, cls, { v: name, hold, off, l: label.replace(/<[^>]+>/g, '').trim() });
-}
+// 所有按鈕都是長按；cf = 長按後還要再確認的危險操作
+const btn = (a, label, cls = '', o = {}) => `<button class="btn hold ${cls}${o.sub ? ' stack' : ''}${o.off ? ' off' : ''}" data-a="${a}"${o.v !== undefined ? ` data-v="${esc(o.v)}"` : ''} data-l="${esc(o.l || label.replace(/<[^>]+>/g, '').trim())}"${o.cf ? ` data-cf="${esc(o.cf)}"` : ''}>${label}<span class="hint">長按</span>${o.sub ? `<span class="sub">${esc(o.sub)}</span>` : ''}</button>`;
+function gbtn(G, name, label, cls, cf) { const b = G && G.btn && G.btn[name]; return btn('game', label, cls, { v: name, off: b && b.ok === false, l: label.replace(/<[^>]+>/g, '').trim(), cf }); }
 function stat(label, val, cls = '') { return `<div class="stat ${cls}"><b>${esc(val)}</b><span>${esc(label)}</span></div>`; }
+const navRow = (nextLabel) => `<div class="grid" style="margin-top:12px">${btn('prev', '◀ 上一段', 'big')}${btn('next', nextLabel || '下一段 ▶', 'big pri')}</div>`;
 
 function gamePanel() {
   const st = S.stages[S.idx], G = S.glance || {}, gname = (C.games && C.games[st.game] || {}).name || st.h;
@@ -183,9 +237,8 @@ function gamePanel() {
   if (!S.inGame) {
     h += `<div class="sec">${esc(gname)}</div>`;
     if (G.needLogin) h += `<div class="note bad">⚠ 遊戲畫面要求主持人登入：請在大螢幕電腦上點遊戲畫面裡的「主持人登入」</div>`;
-    const ss = []; if (G.players != null) ss.push(stat('已加入', G.players)); if (ss.length) h += `<div class="stats">${ss.join('')}</div>`;
     h += `<div class="col">${btn('openGame', '🎮 打開遊戲畫面', 'pri xl', { sub: S.opened ? '再次打開' : '大螢幕切到遊戲（QR Code 讓大家掃）' })}</div>`;
-    return h;
+    return h + navRow();
   }
   h += `<div class="sec">${esc(gname)}<span class="pill live">遊戲中</span></div>`;
   if (G.needLogin) h += `<div class="note bad">⚠ 遊戲畫面要求主持人登入：請在大螢幕電腦上點「主持人登入」</div>`;
@@ -198,25 +251,62 @@ function gamePanel() {
   if (ss.length) h += `<div class="stats">${ss.join('')}</div>`;
   if (st.game === 'coins') {
     h += `<div class="col">${gbtn(G, 'start', '▶ 開始比賽', 'pri xl')}</div>`;
-    h += `<div class="grid">${gbtn(G, 'result', G.btn && /關閉/.test(G.btn.result && G.btn.result.label || '') ? '✕ 關閉結算' : '📋 結算明細', 'big')}${gbtn(G, 'reset', '↺ 重置', 'big red', 1)}</div>`;
-    h += `<div class="note">重置會清掉這一局的明細，要留紀錄請先在大螢幕按「下載 CSV」。</div>`;
+    h += `<div class="grid">${gbtn(G, 'result', G.btn && /關閉/.test(G.btn.result && G.btn.result.label || '') ? '✕ 關閉結算' : '📋 結算明細', 'big')}${gbtn(G, 'reset', '↺ 重置', 'big red', '重置這一局？明細會清掉（要留紀錄先下載 CSV）')}</div>`;
   } else if (st.game === 'truefalse') {
-    if (G.q) {
-      h += `<div class="cheat ${cheatHidden ? 'blur' : ''}"><div class="hd"><span>🤫 主持小抄（只有遙控器看得到）</span><button id="cheatT">${cheatHidden ? '顯示' : '隱藏'}</button></div><div class="q">${esc(G.q)}</div><div class="a ${G.ans ? 't' : 'f'}">${G.ans ? '⭕ 真的' : '❌ 假的'}</div>${G.ex ? `<div class="ex">${esc(G.ex)}</div>` : ''}</div>`;
-    }
+    if (G.q) h += `<div class="cheat ${cheatHidden ? 'blur' : ''}"><div class="hd"><span>🤫 主持小抄（只有遙控器看得到）</span><button id="cheatT">${cheatHidden ? '顯示' : '隱藏'}</button></div><div class="q">${esc(G.q)}</div><div class="a ${G.ans ? 't' : 'f'}">${G.ans ? '⭕ 真的' : '❌ 假的'}</div>${G.ex ? `<div class="ex">${esc(G.ex)}</div>` : ''}</div>`;
     const nl = (G.btn && G.btn.next && G.btn.next.label) || '⏭ 下一題';
     h += `<div class="col">${gbtn(G, 'start', '▶ 開始遊戲', 'pri big')}</div>`;
-    h += `<div class="grid">${gbtn(G, 'reveal', '📣 公布結果', 'big pri', 1)}${gbtn(G, 'next', esc(nl), 'big')}</div>`;
-    h += `<div class="grid">${gbtn(G, 'skip', '↷ 跳過題目', 'sm', 1)}${gbtn(G, 'restart', '↺ 重新開始', 'sm red', 1)}</div>`;
+    h += `<div class="grid">${gbtn(G, 'reveal', '📣 公布結果', 'big pri')}${gbtn(G, 'next', esc(nl), 'big')}</div>`;
+    h += `<div class="grid">${gbtn(G, 'skip', '↷ 跳過題目', 'sm')}${gbtn(G, 'restart', '↺ 重新開始', 'sm red', '重新開始遊戲？分數會歸零')}</div>`;
     h += `<div class="grid">${gbtn(G, 'score', '🏅 積分模式', 'sm')}${gbtn(G, 'elim', '💀 淘汰模式', 'sm')}</div>`;
   }
-  h += `<div class="grid" style="margin-top:14px">${btn('reloadGame', '↻ 重新載入遊戲', 'sm', { hold: 1 })}${btn('exitGame', '⏹ 回到流程', 'sm red', { hold: 1 })}</div>`;
+  h += `<div class="grid" style="margin-top:14px">${btn('reloadGame', '↻ 重新載入遊戲', 'sm', { cf: '重新載入遊戲畫面？' })}${btn('exitGame', '⏹ 回到流程', 'sm red')}</div>`;
+  // 修正：遊戲中也能直接換段（會先回到流程）
+  h += navRow('離開遊戲・下一段 ▶');
   return h;
 }
+function drawPanel() {
+  const st = S.stages[S.idx], k = S.kind;
+  const ph = { ready: '準備中', drawing: '抽獎中', reveal: '揭曉中' }[S.phase] || '';
+  let h = `<div class="sec">${k === 'bonus' ? '加碼（大螢幕只顯示「有沒有人要加碼？」）' : '抽獎'}<span class="phase">${ph}</span></div>`;
+  if (st.by) h += `<div class="note">抽獎人：<b style="color:var(--gold)">${esc(st.by)}</b></div>`;
+  if ((st.prizes || []).length) h += `<div class="prz">${st.prizes.map(([n, c, a]) => `<span><b>${esc(n)}</b> ${a ? fmt(a) : C.prizes && C.prizes[n] ? fmt(C.prizes[n]) : ''} × ${c}</span>`).join('')}</div>`;
+  h += `<div class="col">${btn('phase', '🥁 開始抽獎', 'pri xl', { v: 'drawing', sub: '換成緊張的抽獎音樂' })}</div>`;
+  h += `<div class="grid">${btn('phase', '🎉 揭曉得主', 'big pri', { v: 'reveal', sub: '揭曉音效＋歡呼' })}${btn('phase', '↺ 回到準備', 'big', { v: 'ready' })}</div>`;
+  return h + navRow();
+}
+function tfPanel() {
+  const n = S.tfRules, step = S.tfStep;
+  const txt = step === 0 ? '暗場：音樂淡入中，第 ' + ((C.tfTrack || {}).titleAt || 10) + ' 秒出現標題' : step === 1 ? '標題已出現，下一步開始介紹玩法' : step - 1 < n ? `玩法 ${step - 1} / ${n}` : '玩法都介紹完了，下一步進正式遊戲';
+  let h = `<div class="sec">真的還假的 開場</div><div class="note">${esc(txt)}</div>`;
+  if (!S.track) h += `<div class="note bad">⚠ 大螢幕還沒載入《Way Back Then》音檔，現在用備用音樂（電腦右下角「🎵 載入音檔」）</div>`;
+  h += `<div class="col">${btn('next', step === 0 ? '⏭ 直接出現標題' : step - 1 < n ? '▶ 下一條玩法' : '▶ 進入正式遊戲', 'pri xl')}</div>`;
+  return h + `<div class="grid" style="margin-top:12px">${btn('prev', '◀ 上一步', 'big')}${btn('talk', S.talk ? '🎤 講完了' : '🎤 我要講話', 'big')}</div>`;
+}
+function boardPanel() {
+  const drawn = S.mj || [], last = drawn[drawn.length - 1];
+  const rows = mjRows();
+  let h = `<div class="sec">麻將賓果・點選剛抽出的牌</div><div class="mjcnt">已抽出 <b>${drawn.length}</b> / ${rows.flat().length}　<span class="note">（按住牌到填滿才會亮；按錯用「取消上一張」）</span></div>`;
+  h += rows.map(r => `<div class="mj">${r.map(t => `<button data-mj="${t.id}" data-l="${t.t1}${t.t2}" class="${drawn.includes(t.id) ? 'on' : ''}${t.id === last ? ' last' : ''}">${t.t1}${t.t2 ? `<small class="${t.cls}">${t.t2}</small>` : ''}</button>`).join('')}</div>`).join('');
+  h += `<div class="grid">${btn('mj', '↶ 取消上一張', 'big', { v: 'undo' })}${btn('bingo', '🀄 賓果提示音', 'big')}</div>`;
+  h += `<div class="col">${btn('mj', '⟲ 全部重置', 'sm red', { v: 'reset', cf: '全部重置？已抽出的牌都會清掉' })}</div>`;
+  return h + navRow();
+}
 function grandPanel() {
-  if (S.charging) return `<div class="sec">壓軸頭獎</div><div class="col"><button class="btn xl off">🔥 集氣中…</button></div>`;
-  if (S.exploded) return `<div class="sec">壓軸頭獎</div><div class="col">${S.grandOn ? btn('closeGrand', '收起頭獎畫面', 'big') : ''}${btn('fx', '🎆 再放一次煙火', 'big')}</div>`;
-  return `<div class="sec">壓軸頭獎</div><div class="col">${btn('grand', '🔥 開始集氣・開頭獎', 'pri xl', { hold: 1, sub: '能量條衝刺 9 秒 → 倒數 3、2、1 → 爆開' })}</div>`;
+  const g = S.gphase;
+  let h = `<div class="sec">壓軸頭獎（大螢幕不顯示得獎者，現場抽籤）</div>`;
+  if (g === 'idle') h += `<div class="col">${btn('grand', '✨ 頭獎揭曉', 'pri xl', { sub: '變暗 → 聚光燈 → 「頭獎」登場 → 煙火' })}</div>`;
+  else if (g === 'build') h += `<div class="col"><button class="btn xl off">✨ 揭曉中…</button></div>`;
+  else h += `<div class="grid">${btn('award', '🎵 頒獎音樂', 'big pri', { off: g === 'award', sub: '上台領獎拍照' })}${btn('fx', '🎆 再放煙火', 'big')}</div>`;
+  return h + navRow();
+}
+function cardPanel() { return navRow(S.cine ? '⏭ 跳過動畫' : null); }
+
+function mjRows() {
+  const NUM = ['一', '二', '三', '四', '五', '六', '七', '八', '九'], SU = { m: '萬', p: '筒', s: '條' };
+  const Z = [['E', '東', ''], ['S', '南', ''], ['W', '西', ''], ['N', '北', ''], ['C', '中', ''], ['F', '發', ''], ['P', '白', '']];
+  const cfg = C.mahjong || {}, suits = cfg.suits || ['m', 'p', 's', 'z'], copies = Math.max(1, cfg.copies | 0 || 1);
+  return suits.map(su => { const base = su === 'z' ? Z.map(([k, ch]) => ({ id: 'z' + k, t1: ch, t2: '', cls: '' })) : NUM.map((n, i) => ({ id: su + (i + 1), t1: n, t2: SU[su], cls: su })); const r = []; for (const b of base) for (let c = 1; c <= copies; c++) r.push(Object.assign({}, b, { id: copies > 1 ? b.id + '#' + c : b.id })); return r; });
 }
 
 function draw() {
@@ -230,44 +320,30 @@ function draw() {
   else if (!ok) h += `<div class="warn">大螢幕電腦還沒打開或沒登入。請在電腦開大螢幕網址、登入主持人帳號、點「開始」。</div>`;
   if (!S || !S.stages) { app.innerHTML = h + `<div class="note">等待大螢幕…</div>`; bindTop(); return; }
   const st = S.stages[S.idx], nx = S.stages[S.idx + 1];
-  h += `<div class="now"><div class="k"><span>第 ${S.idx + 1} / ${S.n} 段${st.t ? '・' + esc(st.t) : ''}</span><span>${S.cine ? '🎬 播放動畫中' : ''}</span></div>
-    <div class="h">${esc(st.h)}${S.inGame ? '<span class="pill live">遊戲中</span>' : ''}</div>
-    <div class="s">下一段：<b>${nx ? esc(nx.h) : '（最後一段）'}</b></div>
+  h += `<div class="now"><div class="k"><span>第 ${S.idx + 1} / ${S.n} 段${st.t ? '・' + esc(st.t) : ''}</span><span>${S.cine ? '🎬 播放動畫中' : S.talk ? '🎤 講話模式' : ''}</span></div>
+    <div class="h">${esc(st.h || st.chip)}${S.inGame ? '<span class="pill live">遊戲中</span>' : ''}</div>
+    <div class="s">下一段：<b>${nx ? esc(nx.h || nx.chip) : '（最後一段）'}</b></div>
     <div class="prog"><i style="width:${((S.idx + 1) / S.n * 100).toFixed(1)}%"></i></div></div>`;
-  // 主要操作
+  if (S.note) h += `<div class="warn note2">${esc(S.note)}</div>`;
   if (st.game) h += gamePanel();
-  else if (st.grand) h += grandPanel();
-  if (!S.inGame) {
-    const busy = S.charging;
-    const pv = btn('prev', '◀ 上一段', 'big' + (busy || S.idx === 0 && !S.grandOn ? ' off' : ''));
-    const last = S.idx >= S.n - 1;
-    const nxBtn = btn('next', S.cine ? '⏭ 跳過動畫' : '下一段 ▶', 'big pri' + (busy || (last && !S.cine) ? ' off' : ''));
-    // 頭獎那一段：還沒開獎時只能長按「開始集氣」；開完獎才出現「下一段」（加碼 13 抽）
-    h += st.grand && !S.exploded ? `<div class="col" style="margin-top:12px">${pv}</div>` : `<div class="grid" style="margin-top:12px">${pv}${nxBtn}</div>`;
-  }
-  // 工具
-  h += `<div class="sec">音效</div><div class="grid">${btn('fx', '🎆 放煙火', 'sm')}${btn('music', S.music ? '🎵 音樂：開' : '🔇 音樂：關', 'sm' + (S.music ? '' : ' sel'))}</div>
-    <div class="vol"><button id="vDn">−</button><input type="range" id="vR" min="0" max="100" step="5" value="${S.vol}"><b id="vB">${S.vol}</b><button id="vUp">＋</button></div>
-    ${S.audio === false ? '<div class="note bad">⚠ 大螢幕的音效還沒啟動：請在電腦上點一下畫面</div>' : '<div class="note">控制大螢幕網頁的音樂、音效和影片音量（不是電腦的系統音量）。</div>'}`;
-  // 段落清單
+  else if (S.type === 'draw') h += drawPanel();
+  else if (S.type === 'board') h += boardPanel();
+  else if (S.type === 'tfIntro') h += tfPanel();
+  else if (S.type === 'grand') h += grandPanel();
+  else h += cardPanel();
+  // 工具（全部長按）
+  h += `<div class="sec">聲音</div><div class="grid">${btn('talk', S.talk ? '🎤 講完了（音樂回來）' : '🎤 主持人講話', 'sm' + (S.talk ? ' sel' : ''), { sub: S.talk ? '' : '背景音樂降到很小聲' })}${btn('applause', '👏 掌聲', 'sm')}</div>
+    <div class="grid">${btn('fx', '🎆 放煙火', 'sm')}${btn('music', S.music ? '🎵 音樂：開' : '🔇 音樂：關', 'sm' + (S.music ? '' : ' sel'))}</div>
+    <div class="vol">${btn('vol', '−', '', { v: Math.max(0, S.vol - 10), l: '音量 ' + Math.max(0, S.vol - 10) })}<b id="vB" style="flex:1;text-align:center;font-size:20px">${S.vol}</b>${btn('vol', '＋', '', { v: Math.min(100, S.vol + 10), l: '音量 ' + Math.min(100, S.vol + 10) })}</div>
+    ${S.audio === false ? '<div class="note bad">⚠ 大螢幕的聲音還沒啟動：請在電腦上點一下畫面</div>' : '<div class="note">音量是大螢幕網頁的音樂、音效和影片（不是電腦的系統音量）。</div>'}`;
   h += `<div class="sec">全部流程<button class="btn sm" id="lsT" style="min-height:30px;padding:4px 12px;font-size:12px">${showList ? '收起' : '展開'}</button></div>`;
-  if (showList) h += `<div class="list">${S.stages.map((x, i) => `<button data-a="goto" data-v="${i}" class="${i === S.idx ? 'cur' : i < S.idx ? 'done' : ''}"><span class="t">${esc(x.t)}</span>${esc(x.h)}${x.game ? ' 🎮' : ''}${x.grand ? ' 🏆' : ''}</button>`).join('')}</div>`;
+  if (showList) h += `<div class="col">${S.stages.map((x, i) => btn('goto', `<span style="opacity:.6;font-size:12px;margin-right:8px">${esc(x.t)}</span>${esc(x.h || x.chip)}`, 'sm' + (i === S.idx ? ' sel' : ''), { v: i, l: '跳到 ' + (x.chip || '') })).join('')}</div>`;
   h += `<div class="foot">${S.lastBy ? `最後操作：${esc(S.lastBy)}・${esc(S.lastAct)}` : ''}</div>`;
   if (app.dataset.h === h) return;
   app.dataset.h = h; app.innerHTML = h;
   bindHold(app); bindTop();
   const ct = $('cheatT'); if (ct) ct.onclick = () => { cheatHidden = !cheatHidden; try { localStorage.setItem('weiyaCheatHidden', cheatHidden ? '1' : '0'); } catch (e) {} draw(); };
   const lt = $('lsT'); if (lt) lt.onclick = () => { showList = !showList; draw(); };
-  bindVol();
-}
-let volT, volLocal = null;
-function bindVol() {
-  const r = $('vR'); if (!r) return;
-  const set = v => { v = Math.max(0, Math.min(100, v)); volLocal = v; r.value = v; $('vB').textContent = v; clearTimeout(volT); volT = setTimeout(() => { send('vol', v); setTimeout(() => volLocal = null, 1500); }, 180); };
-  r.oninput = () => set(+r.value);
-  $('vDn').onclick = () => set((volLocal ?? +r.value) - 10);
-  $('vUp').onclick = () => set((volLocal ?? +r.value) + 10);
-  if (volLocal !== null) { r.value = volLocal; $('vB').textContent = volLocal; }
 }
 function bindTop() {
   const m = $('mn'); if (!m) return;
@@ -290,7 +366,6 @@ function loginView(msg) {
   $('lGo').onclick = go; $('lP').onkeydown = e => { if (e.key === 'Enter') go(); };
 }
 
-// 螢幕保持亮著
 let wake = null;
 async function keepAwake() { try { if ('wakeLock' in navigator && !wake && document.visibilityState === 'visible') { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => wake = null); } } catch (e) {} }
 document.addEventListener('visibilitychange', keepAwake);
@@ -303,7 +378,7 @@ document.addEventListener('pointerdown', keepAwake, { passive: true });
     user = u;
     if (!u) { started = false; loginView(bus.loadError ? 'Firebase 載入失敗：' + bus.loadError : ''); return; }
     const allowed = bus.demo || !C.remotes || Object.keys(C.remotes).map(x => x.toLowerCase()).includes((u.email || '').toLowerCase());
-    if (!allowed) { stateErr = '這個帳號（' + u.email + '）不在遙控名單裡，請用遙控器帳號登入。'; }
+    if (!allowed) stateErr = '這個帳號（' + u.email + '）不在遙控名單裡，請用遙控器帳號登入。';
     $('app').dataset.h = ''; draw();
     if (started) return; started = true;
     bus.onConnected(c => { online = c; draw(); });

@@ -8,7 +8,7 @@
   // 遊戲嵌在大螢幕裡時，直接用大螢幕那一套（聲音已解鎖、音量一起控制）
   try { if (window.parent !== window && window.parent.FestiveAudio) { window.FestiveAudio = window.parent.FestiveAudio; return; } } catch (e) {}
 
-  let ctx = null, master = null, noiseBuf = null, vol = 1;
+  let ctx = null, master = null, musicBus = null, noiseBuf = null, vol = 1, ducked = false;
   function init() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return ctx; }
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
@@ -16,10 +16,12 @@
     const comp = ctx.createDynamicsCompressor();   // 讓大小聲比較一致
     comp.threshold.value = -16; comp.knee.value = 10; comp.ratio.value = 4; comp.attack.value = .004; comp.release.value = .25;
     master.connect(comp); comp.connect(ctx.destination);
+    musicBus = ctx.createGain(); musicBus.gain.value = ducked ? DUCK : 1; musicBus.connect(master);   // 背景音樂專用（講話時壓低）
     const n = ctx.sampleRate * 2; noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
     const a = noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) a[i] = Math.random() * 2 - 1;
     return ctx;
   }
+  let DUCK = .12;   // 主持人講話時背景音樂剩多少（0.12 = 12%）
   const N = m => 440 * Math.pow(2, (m - 69) / 12);
   const R = (a, b) => a + Math.random() * (b - a);
   function env(g, t, peak, a, d) { g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(peak, .0002), t + a); g.gain.exponentialRampToValueAtTime(.0001, t + a + d); }
@@ -68,6 +70,12 @@
     // 編鐘：低沉悠遠的鐘聲
     bianzhong(d, m, t, len, v = .14) { const f = N(m - 12), L = Math.max(2, len); [[1, 1], [2.76, .35], [5.4, .15]].forEach(([k, a]) => { const g = G(d, 0); env(g, t, v * a, .003, L / (k > 1 ? 2 : 1)); osc('sine', f * k, g, t, L); }); },
     // 電子合成：現代感的方波主旋律
+    // 鋼琴：清楚的起音＋自然衰減（電影感致詞用）
+    piano(d, m, t, len, v = .16) { const f = N(m), L = Math.max(1.6, len * 1.4); [[1, 1, 'triangle'], [2, .3, 'sine'], [3, .12, 'sine']].forEach(([k, a, ty]) => { const g = G(d, 0); env(g, t, v * a, .004, L / k); osc(ty, f * k, g, t, L); }); const g = G(d, 0); env(g, t, v * .2, .001, .03); noise(g, t, .04, 'bandpass', f * 4, 2); },
+    // 弦樂：慢慢拉起來的合奏聲
+    strings(d, m, t, len, v = .07) { const f = N(m), L = Math.max(.4, len), g = G(d, 0); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + Math.min(.35, L * .5)); g.gain.setValueAtTime(v, t + Math.max(.36, L - .2)); g.gain.linearRampToValueAtTime(.0001, t + L + .3); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200; lp.connect(g); const lg = vibrato(t, f, .006, 5, L + .3, .3); for (const k of [1, 1.004, .996]) { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f * k; lg.connect(o.frequency); o.connect(lp); o.start(t); o.stop(t + L + .35); } },
+    // 銅管：頒獎典禮的號角和弦
+    brass(d, m, t, len, v = .09) { const f = N(m), L = Math.max(.25, len), g = G(d, 0); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .05); g.gain.setValueAtTime(v * .85, t + Math.max(.06, L - .08)); g.gain.exponentialRampToValueAtTime(.0001, t + L + .1); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t); lp.frequency.exponentialRampToValueAtTime(2600, t + .08); lp.connect(g); for (const k of [1, 1.005]) osc('sawtooth', f * k, lp, t, L + .1); },
     synth(d, m, t, len, v = .07) { const f = N(m), g = G(d, 0); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .01); g.gain.setValueAtTime(v * .8, t + Math.max(.02, len - .05)); g.gain.exponentialRampToValueAtTime(.0001, t + len); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(4500, t); lp.frequency.exponentialRampToValueAtTime(1500, t + len); lp.connect(g); for (const k of [1, 1.006]) osc('square', f * k, lp, t, len); },
     none() {}
   };
@@ -80,6 +88,10 @@
     jijifeng(d, s, t) { const b = s % 8; drum(d, t, b === 0 ? .65 : b === 4 ? .5 : .22, 1.1, .2); if (b === 0) smallGong(d, t, .14); if (b === 4) cymbal(d, t, .15, .25); if (s % 64 === 0) gong(d, t, .35, 2.2); },
     lion(d, s, t) { const b = s % 8; if (b % 2 === 0) drum(d, t, b === 0 ? .9 : .6, .8, .4); if (b === 3 || b === 7) drum(d, t, .45, .8, .3); if (b === 2 || b === 6) cymbal(d, t, .25, .35); if (s % 16 === 0) gong(d, t, .3, 1.6); },
     march(d, s, t) { const b = s % 8; if (b === 0 || b === 4) drum(d, t, .7, .9); woodblock(d, t, b % 2 ? .06 : .12, 1300); if (b === 6) { drum(d, t, .35, 1.2, .12); drum(d, t + .06, .35, 1.2, .12); } if (s % 16 === 12) cymbal(d, t, .2, .4); },
+    // 電影感懸疑：定音鼓滾奏＋心跳低鼓，每 4 小節一次鈸聲往上推
+    cine(d, s, t) { const b = s % 8; if (b === 0) drum(d, t, .75, .6, .9); if (b === 3) drum(d, t, .35, .6, .5); if (b === 4) drum(d, t, .5, .62, .7); if (s % 32 >= 28) drum(d, t, .25 + (s % 32 - 28) * .12, .7, .2); if (s % 32 === 0) { const g = G(d, 0); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.12, t + 1.5); g.gain.linearRampToValueAtTime(0, t + 1.6); noise(g, t, 1.6, 'highpass', 5000); } },
+    // 心跳：很輕的低鼓，只營造期待感
+    pulse(d, s, t) { const b = s % 8; if (b === 0) drum(d, t, .4, .55, .5); if (b === 1) drum(d, t, .25, .55, .4); if (s % 16 === 8) woodblock(d, t, .05, 800); },
     edm(d, s, t) { const b = s % 8; if (b % 2 === 0) kick(d, t, .8); if (b === 2 || b === 6) clap(d, t, .3); hat(d, t, b % 2 ? .12 : .06); if (s % 32 === 0) cymbal(d, t, .2, 1); }
   };
 
@@ -91,22 +103,38 @@
     C: { name: '熱鬧進行', bass: [43, 38, 43, 38, 43, 40, 38, 43], n: [67,67,_,71,74,_,71,_, 76,76,_,74,71,_,_,_, 69,69,_,71,74,_,76,_, 74,_,71,_,69,_,_,_, 67,67,_,71,74,_,79,_, 81,_,79,_,76,_,74,_, 76,_,74,71,69,_,71,_, 67,_,_,_,_,_,_,_] },
     D: { name: '緊張懸疑', bass: [38, 38, 41, 36, 38, 41, 43, 38], n: [62,_,_,65,_,_,67,_, 69,_,_,_,67,_,65,_, 62,_,_,65,_,_,67,_, 60,_,_,_,_,_,_,_, 62,_,_,65,_,_,69,_, 72,_,_,_,69,_,67,_, 65,_,67,_,65,_,62,_, _,_,_,_,_,_,_,_] },
     E: { name: '衝刺快板', bass: [38, 43, 38, 45, 38, 43, 38, 43], n: [74,76,79,81,79,76,74,71, 74,76,79,81,84,_,81,_, 79,81,79,76,74,76,74,71, 69,71,74,_,76,_,_,_, 74,76,79,81,79,76,74,71, 69,71,74,76,79,_,76,_, 74,76,74,71,69,71,69,67, 67,_,_,_,67,_,_,_] },
+    G: { name: '神祕期待', bass: [38, 38, 34, 36, 38, 38, 41, 40], n: [74,_,_,_,_,_,72,_, 69,_,_,_,_,_,_,_, 74,_,_,_,77,_,76,_, 72,_,_,_,_,_,_,_, 69,_,_,_,72,_,74,_, 76,_,_,_,74,_,_,_, 72,_,69,_,67,_,_,_, 69,_,_,_,_,_,_,_] },
+    H: { name: '隆重頒獎', bass: [48, 48, 41, 43, 48, 45, 41, 43], n: [72,_,_,76,79,_,_,_, 84,_,_,_,79,_,_,_, 81,_,79,_,76,_,74,_, 76,_,_,_,72,_,_,_, 72,_,_,76,79,_,_,_, 84,_,_,_,86,_,84,_, 81,_,79,_,77,_,76,_, 72,_,_,_,_,_,_,_] },
+    I: { name: '溫暖頒獎', bass: [48, 45, 41, 43, 48, 45, 41, 43], n: [76,_,_,_,79,_,_,_, 81,_,79,_,76,_,_,_, 74,_,_,_,76,_,72,_, 74,_,_,_,_,_,_,_, 76,_,_,_,79,_,_,_, 84,_,81,_,79,_,_,_, 77,_,76,_,74,_,72,_, 72,_,_,_,_,_,_,_] },
     F: { name: '溫馨收尾', bass: [48, 45, 43, 45, 48, 43, 45, 48], n: [72,_,_,_,74,_,76,_, 79,_,_,_,76,_,_,_, 74,_,_,_,72,_,74,_, 69,_,_,_,_,_,_,_, 72,_,_,_,74,_,76,_, 79,_,81,_,79,_,76,_, 74,_,76,_,72,_,_,_, _,_,_,_,_,_,_,_] }
   };
 
   // ================= 每個環節的預設音樂（config.js 的 music 會覆蓋） =================
+  // pad：true = 柔和和弦、'strings' = 弦樂鋪底
   const DEFAULT_SLOTS = {
-    welcome:   { name: '迎賓・報到',       mel: 'B', lead: 'guzheng',   perc: 'light',    bpm: 92,  pad: true,  vol: .9 },
-    dine:      { name: '用餐・致詞・貴賓', mel: 'F', lead: 'dizi',      perc: 'light',    bpm: 84,  pad: true,  vol: .8 },
-    mahjong:   { name: '麻將賓果',         mel: 'C', lead: 'yangqin',   perc: 'march',    bpm: 116, pad: false, vol: 1 },
-    draw:      { name: '抽獎',             mel: 'A', lead: 'suona',     perc: 'luogu',    bpm: 126, pad: false, vol: 1 },
-    truefalse: { name: '真的還假的',       mel: 'D', lead: 'pipa',      perc: 'jijifeng', bpm: 132, pad: false, vol: 1 },
-    coins:     { name: '財神撒金幣',       mel: 'E', lead: 'suona',     perc: 'lion',     bpm: 150, pad: false, vol: 1 },
-    grand:     { name: '壓軸頭獎',         mel: 'D', lead: 'bianzhong', perc: 'lion',     bpm: 104, pad: true,  vol: 1 },
-    ending:    { name: '散場',             mel: 'F', lead: 'guzheng',   perc: 'light',    bpm: 88,  pad: true,  vol: .85 }
+    welcome:    { name: '迎賓・報到（維持原本）',   mel: 'B', lead: 'guzheng',   perc: 'light',    bpm: 92,  pad: true,      vol: .9 },
+    speech:     { name: '開場致詞（電影感鋼琴弦樂）', mel: 'B', lead: 'piano',     perc: 'none',     bpm: 72,  pad: 'strings', vol: .8 },
+    dine:       { name: '用餐・感謝貴賓',           mel: 'F', lead: 'dizi',      perc: 'light',    bpm: 84,  pad: true,      vol: .8 },
+    mahjong:    { name: '麻將賓果（輕快遊戲）',     mel: 'C', lead: 'yangqin',   perc: 'march',    bpm: 116, pad: false,     vol: .7 },
+    drawPrep:   { name: '抽獎・準備（暖場節奏）',   mel: 'A', lead: 'suona',     perc: 'luogu',    bpm: 120, pad: false,     vol: .9 },
+    drawA:      { name: '抽獎中 A（節奏懸疑）',     mel: 'D', lead: 'pipa',      perc: 'jijifeng', bpm: 124, pad: false,     vol: .9 },
+    drawB:      { name: '抽獎中 B（鼓點加強）',     mel: 'D', lead: 'synth',     perc: 'lion',     bpm: 132, pad: true,      vol: .9 },
+    drawC:      { name: '抽獎中 C（電影感期待）',   mel: 'G', lead: 'strings',   perc: 'cine',     bpm: 100, pad: 'strings', vol: 1 },
+    luckyPrep:  { name: '最佳幸運兒・揭曉前（神祕）', mel: 'G', lead: 'bianzhong', perc: 'pulse',    bpm: 84,  pad: 'strings', vol: .9 },
+    luckyWin:   { name: '最佳幸運兒・慶祝',         mel: 'A', lead: 'yangqin',   perc: 'luogu',    bpm: 128, pad: true,      vol: .9 },
+    secondPrep: { name: '二獎・抽獎前（強烈期待）', mel: 'G', lead: 'brass',     perc: 'cine',     bpm: 96,  pad: 'strings', vol: 1 },
+    secondDraw: { name: '二獎・抽獎中（高級緊張）', mel: 'D', lead: 'strings',   perc: 'cine',     bpm: 112, pad: 'strings', vol: 1 },
+    truefalse:  { name: '真的還假的（沒載入音檔時的備用）', mel: 'D', lead: 'pipa', perc: 'jijifeng', bpm: 132, pad: false, vol: .8 },
+    coins:      { name: '財神撒金幣・遊戲中',       mel: 'E', lead: 'suona',     perc: 'lion',     bpm: 150, pad: false,     vol: .85 },
+    coinsFinal: { name: '財神撒金幣・最後 10 秒',   mel: 'E', lead: 'suona',     perc: 'jijifeng', bpm: 176, pad: false,     vol: 1 },
+    grandWait:  { name: '頭獎・揭曉前',             mel: 'G', lead: 'bianzhong', perc: 'pulse',    bpm: 80,  pad: 'strings', vol: .8 },
+    grandWin:   { name: '頭獎・揭曉高潮',           mel: 'H', lead: 'brass',     perc: 'luogu',    bpm: 124, pad: 'strings', vol: 1 },
+    award:      { name: '頭獎・上台領獎拍照',       mel: 'I', lead: 'piano',     perc: 'light',    bpm: 92,  pad: 'strings', vol: .55 },
+    bonus:      { name: '有沒有人要加碼？（懸念）', mel: 'G', lead: 'pipa',      perc: 'pulse',    bpm: 96,  pad: true,      vol: .8 },
+    ending:     { name: '感謝蒞臨・散場',           mel: 'F', lead: 'guzheng',   perc: 'light',    bpm: 88,  pad: true,      vol: .8 }
   };
   // 舊名稱相容
-  const ALIAS = { party: 'draw', game: 'truefalse' };
+  const ALIAS = { party: 'drawPrep', game: 'truefalse', draw: 'drawPrep', grand: 'grandWait' };
   let SLOTS = Object.assign({}, DEFAULT_SLOTS);
   function setSlots(o) { if (!o) return; for (const k in o) SLOTS[k] = Object.assign({}, DEFAULT_SLOTS[k] || {}, o[k]); }
   if (window.WEIYA && window.WEIYA.music) setSlots(window.WEIYA.music);
@@ -125,7 +153,8 @@
       if (s % 8 === 0) {
         const bm = M.bass[(s / 8) % M.bass.length];
         const g = G(d, 0); env(g, t, .2, .02, st * 7); osc('triangle', N(bm), g, t, st * 8);
-        if (S.pad) for (const iv of [12, 19, 24]) { const pg = G(d, 0); pg.gain.setValueAtTime(.0001, t); pg.gain.linearRampToValueAtTime(.025, t + st * 2); pg.gain.linearRampToValueAtTime(.0001, t + st * 8); osc('sine', N(bm + iv), pg, t, st * 8); }
+        if (S.pad === 'strings') for (const iv of [12, 19, 24]) LEADS.strings(d, bm + iv, t, st * 7.5, .03);
+        else if (S.pad) for (const iv of [12, 19, 24]) { const pg = G(d, 0); pg.gain.setValueAtTime(.0001, t); pg.gain.linearRampToValueAtTime(.025, t + st * 2); pg.gain.linearRampToValueAtTime(.0001, t + st * 8); osc('sine', N(bm + iv), pg, t, st * 8); }
       }
       P(d, s, t);
       cur.step++; cur.nextT += st;
@@ -137,7 +166,7 @@
     if (cur && key && cur.key === key) { const t = ctx.currentTime; cur.bus.gain.cancelScheduledValues(t); cur.bus.gain.setValueAtTime(cur.bus.gain.value, t); cur.bus.gain.linearRampToValueAtTime(spec.vol == null ? 1 : spec.vol, t + sec); return; }
     if (cur) { const old = cur.bus, t = ctx.currentTime; old.gain.cancelScheduledValues(t); old.gain.setValueAtTime(old.gain.value, t); old.gain.linearRampToValueAtTime(0, t + sec); setTimeout(() => { try { old.disconnect(); } catch (e) {} }, sec * 1000 + 800); cur = null; }
     if (!spec) return;
-    const bus = G(master, 0), t = ctx.currentTime; bus.gain.setValueAtTime(0, t); bus.gain.linearRampToValueAtTime(spec.vol == null ? 1 : spec.vol, t + sec);
+    const bus = G(musicBus, 0), t = ctx.currentTime; bus.gain.setValueAtTime(0, t); bus.gain.linearRampToValueAtTime(spec.vol == null ? 1 : spec.vol, t + sec);
     cur = { spec: Object.assign({}, spec), bus, step: 0, nextT: t + .08, key };
     if (!timer) timer = setInterval(tick, 50);
   }
@@ -155,8 +184,35 @@
     start() { if (!init()) return; const t = now(); bigDrum(master, t, 1); gong(master, t + .02, .7); cymbal(master, t + .02, .35); },
     roll(sec = 1.8) { if (!init()) return; const t = now(); let tt = 0, k = 0; while (tt < sec) { drum(master, t + tt, .25 + .5 * tt / sec, 1.15, .18); tt += Math.max(.045, .12 - k * .004); k++; } cymbal(master, t + sec, .4); },
     fanfare() { if (!init()) return; const t = now(); drum(master, t, .9); drum(master, t + .18, .7); cymbal(master, t + .36, .4); smallGong(master, t + .36, .3); [72, 74, 76, 79, 81, 84].forEach((m, i) => LEADS.suona(master, m, t + .5 + i * .11, i === 5 ? .9 : .13, .14)); firecrackers(master, t + .5, 1.6, 28, .35); },
-    firecrackers(sec = 2.5) { if (!init()) return; firecrackers(master, now(), sec); }
+    firecrackers(sec = 2.5) { if (!init()) return; firecrackers(master, now(), sec); },
+    // 掌聲：很多隨機拍手聲疊在一起，先變大再慢慢收
+    applause(sec = 4, v = .35) { if (!init()) return; const t = now(), n = Math.floor(sec * 70); for (let i = 0; i < n; i++) { const tt = t + Math.random() * sec, k = Math.min(1, tt - t) * Math.min(1, (t + sec - tt) / 1.2); const g = G(master, 0); env(g, tt, v * k * R(.3, 1), .001, R(.03, .08)); noise(g, tt, .1, 'bandpass', R(900, 2400), 1.5); } },
+    // 歡呼：寬頻的人聲感噪音隆起
+    cheer(sec = 2.5, v = .14) { if (!init()) return; const t = now(); for (const f of [700, 1200, 1900]) { const g = G(master, 0); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .3); g.gain.exponentialRampToValueAtTime(.0001, t + sec); const bp = noise(g, t, sec, 'bandpass', f, 2.5); bp.frequency.linearRampToValueAtTime(f * 1.15, t + .4); } },
+    // 一般抽獎揭曉：大鼓＋鈸＋銅管和弦＋歡呼掌聲（短而有力）
+    reveal() { if (!init()) return; const t = now(); bigDrum(master, t, 1); cymbal(master, t, .5, 1.2); [67, 71, 74, 79].forEach(m => LEADS.brass(master, m, t + .02, .9, .07)); sfx.cheer(2.2); setTimeout(() => sfx.applause(3.2, .3), 250); },
+    // 最佳幸運兒：優雅的上行琶音＋鐘聲＋和弦
+    revealElegant() { if (!init()) return; const t = now(); [67, 71, 74, 79, 83, 86].forEach((m, i) => LEADS.guzheng(master, m, t + i * .07, 1.2, .14)); bell(master, t + .45, .12); [72, 76, 79, 84].forEach(m => LEADS.strings(master, m, t + .45, 1.6, .05)); drum(master, t + .45, .7, .7, .8); setTimeout(() => sfx.applause(3.5, .28), 600); },
+    // 二獎：大鑼＋大鼓＋隆重銅管＋鞭炮＋掌聲
+    revealBig() { if (!init()) return; const t = now(); bigDrum(master, t, 1); gong(master, t, .9, 3.5); cymbal(master, t, .5, 1.6); [[60, 0], [67, 0], [72, 0], [76, 0], [79, .35], [84, .35]].forEach(([m, d]) => LEADS.brass(master, m, t + d, 1.4 - d, .07)); firecrackers(master, t + .2, 2.4, 30, .3); sfx.cheer(3); setTimeout(() => sfx.applause(4, .32), 300); },
+    // 麻將賓果：木魚連打＋鏘
+    bingo() { if (!init()) return; const t = now(); [0, .08, .16, .24].forEach((d, i) => woodblock(master, t + d, .3, 1100 + i * 150)); cymbal(master, t + .34, .4); smallGong(master, t + .34, .3); LEADS.suona(master, 79, t + .36, .5, .12); },
+    // 金幣「叮」
+    coin() { if (!init()) return; const t = now(); for (const [f, d] of [[1975, 0], [2637, .07]]) { const g = G(master, 0); env(g, t + d, .1, .002, .35); osc('sine', f, g, t + d, .4); } }
   };
+  // 頭獎揭曉：鼓聲＋弦樂慢慢堆高（sec 秒），然後大鑼＋銅管號角＋煙火鞭炮＋歡呼
+  function grandBuild(sec = 6) {
+    if (!init()) return; const t = ctx.currentTime; let tt = 0, gap = .45;
+    while (tt < sec) { drum(master, t + tt, .25 + .6 * tt / sec, .65, .5); tt += gap; gap = Math.max(.06, gap * .9); }
+    [50, 57, 62, 66, 69].forEach((m, i) => { const g = G(master, 0); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.05 + i * .01, t + sec); g.gain.linearRampToValueAtTime(.0001, t + sec + .1); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(400, t); lp.frequency.exponentialRampToValueAtTime(3500, t + sec); lp.connect(g); for (const k of [1, 1.005]) osc('sawtooth', N(m) * k, lp, t, sec + .1); });
+    const g = G(master, 0); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.2, t + sec); g.gain.linearRampToValueAtTime(0, t + sec + .05); noise(g, t, sec, 'highpass', 5000);
+  }
+  function grandHit() {
+    if (!init()) return; const t = ctx.currentTime;
+    bigDrum(master, t, 1); gong(master, t, 1, 4.5); cymbal(master, t, .55, 1.8);
+    [[60, 0, 1.6], [64, 0, 1.6], [67, 0, 1.6], [72, 0, 1.6], [72, 1.7, .25], [76, 1.95, .25], [79, 2.2, 1.8], [84, 2.2, 1.8], [67, 2.2, 1.8]].forEach(([m, d, l]) => LEADS.brass(master, m, t + d, l, .075));
+    firecrackers(master, t + .2, 3.5, 36, .35); sfx.cheer(3.5, .16); setTimeout(() => sfx.applause(5, .32), 400);
+  }
   function riser(sec = 9) {
     if (!init()) return; const t = ctx.currentTime; let tt = 0, gap = .5;
     while (tt < sec) { drum(master, t + tt, .3 + .6 * tt / sec, 1, .25); if (tt > sec * .6) woodblock(master, t + tt + gap / 2, .15); tt += gap; gap = Math.max(.05, gap * .93); }
@@ -171,12 +227,17 @@
   }
 
   window.FestiveAudio = {
-    init, music, playSpec, setSlots, sfx, riser, boom,
+    init, music, playSpec, setSlots, sfx, riser, boom, grandBuild, grandHit,
+    // 主持人講話：背景音樂壓到 level（音效不受影響）
+    duck(on, level, sec = .6) { ducked = !!on; if (level != null) DUCK = level; if (!musicBus) return; const t = ctx.currentTime; musicBus.gain.cancelScheduledValues(t); musicBus.gain.setValueAtTime(musicBus.gain.value, t); musicBus.gain.linearRampToValueAtTime(ducked ? DUCK : 1, t + sec); },
+    isDucked: () => ducked,
+    current: () => cur && cur.spec,
     slots: () => SLOTS, defaults: () => DEFAULT_SLOTS,
     options: {
       mel: Object.fromEntries(Object.entries(MELS).map(([k, v]) => [k, v.name])),
-      lead: { suona: '嗩吶', guzheng: '古箏', dizi: '笛子', pipa: '琵琶', yangqin: '揚琴', bianzhong: '編鐘', synth: '電子合成', none: '（不要主旋律）' },
-      perc: { none: '（不要鑼鼓）', light: '輕柔木魚碰鈴', luogu: '喜慶鑼鼓「咚咚鏘」', march: '輕快進行', jijifeng: '急急風（快板）', lion: '舞獅大鼓', edm: '電子舞曲鼓' }
+      lead: { suona: '嗩吶', guzheng: '古箏', dizi: '笛子', pipa: '琵琶', yangqin: '揚琴', bianzhong: '編鐘', piano: '鋼琴', strings: '弦樂', brass: '銅管', synth: '電子合成', none: '（不要主旋律）' },
+      perc: { none: '（不要鑼鼓）', light: '輕柔木魚碰鈴', pulse: '心跳低鼓（期待感）', cine: '電影感定音鼓', luogu: '喜慶鑼鼓「咚咚鏘」', march: '輕快進行', jijifeng: '急急風（快板）', lion: '舞獅大鼓', edm: '電子舞曲鼓' },
+      pad: { false: '不要', true: '柔和和弦', strings: '弦樂鋪底' }
     },
     ready: () => !!ctx && ctx.state === 'running',
     setVolume(v) { vol = Math.max(0, Math.min(1, +v || 0)); if (master) { const t = ctx.currentTime; master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t); master.gain.linearRampToValueAtTime(vol, t + .15); } },
