@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#14100c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="尾牙遙控器">
+<title>尾牙遙控器</title>
+<style>
+:root{--bg:#14100c;--card:#211a14;--card2:#2b221a;--line:#3a2f24;--gold:#f5c451;--gold2:#ffe7a0;--txt:#f4ede4;--dim:#a99c8c;--red:#e5484d;--green:#30c27a;--blue:#4c9be8}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 18px);max-width:560px;margin:0 auto}
+button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation}
+.hide{display:none!important}
+/* 頂列 */
+.top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.lamp{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;padding:7px 12px;border-radius:99px;background:var(--card)}
+.lamp i{width:10px;height:10px;border-radius:50%;background:#777}
+.lamp.ok i{background:var(--green);box-shadow:0 0 8px var(--green)}
+.lamp.bad{color:#ffb0b0}.lamp.bad i{background:var(--red);animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+.top .sp{flex:1}
+.who{font-size:13px;color:var(--dim);text-align:right;line-height:1.3}
+.menu{width:36px;height:36px;border-radius:50%;background:var(--card);font-size:18px}
+.warn{background:#4a1416;color:#ffd0d0;border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:14px;line-height:1.5}
+/* 目前段落 */
+.now{background:var(--card);border-radius:20px;padding:16px 18px;margin-bottom:12px;border:1px solid var(--line)}
+.now .k{font-size:13px;color:var(--dim);display:flex;justify-content:space-between}
+.now .h{font-size:28px;font-weight:900;color:var(--gold);margin:4px 0 2px;line-height:1.2}
+.now .s{font-size:14px;color:var(--dim)}
+.now .s b{color:var(--txt);font-weight:700}
+.prog{height:4px;border-radius:2px;background:var(--line);margin-top:12px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--gold);transition:width .4s}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--card2);color:var(--gold2);margin-left:6px;vertical-align:3px}
+.pill.live{background:var(--red);color:#fff}
+/* 按鈕 */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:60px;padding:10px 12px;border-radius:16px;background:var(--card2);font-size:18px;font-weight:800;position:relative;overflow:hidden;border:1px solid var(--line);transition:transform .08s,opacity .2s;text-align:center;line-height:1.2}
+.btn:active{transform:scale(.97)}
+.btn.pri{background:linear-gradient(#ffe39a,#f2b632);color:#3b1a05;border:0}
+.btn.red{background:#3a1517;color:#ffb3b3;border-color:#5a2226}
+.btn.big{min-height:84px;font-size:22px}
+.btn.xl{min-height:110px;font-size:26px}
+.btn.sm{min-height:46px;font-size:15px;font-weight:700}
+.btn[disabled],.btn.off{opacity:.32;pointer-events:none}
+.btn.stack{flex-direction:column;gap:3px}
+.btn .sub{display:block;font-size:12px;font-weight:600;opacity:.75}
+.btn.hold::before{content:"";position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.22)}
+.btn.hold.holding::before{width:100%;transition:width .8s linear}
+.btn.hold .hint{position:absolute;right:8px;top:6px;font-size:10px;font-weight:700;opacity:.6}
+.btn.sel{outline:3px solid var(--gold);outline-offset:-3px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+.col{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.sec{margin:18px 0 8px;font-size:13px;font-weight:800;color:var(--dim);letter-spacing:.08em;display:flex;justify-content:space-between;align-items:center}
+/* 遊戲狀態 */
+.stats{display:flex;gap:8px;margin-bottom:10px}
+.stat{flex:1;background:var(--card);border-radius:14px;padding:10px;text-align:center;border:1px solid var(--line)}
+.stat b{display:block;font-size:26px;font-weight:900;color:var(--txt);font-variant-numeric:tabular-nums;line-height:1.15}
+.stat span{font-size:12px;color:var(--dim)}
+.stat.cd b{color:var(--gold)}
+.cheat{background:#16201a;border:1px solid #2c4a37;border-radius:16px;padding:14px;margin-bottom:10px}
+.cheat .q{font-size:17px;font-weight:700;line-height:1.45}
+.cheat .a{margin-top:10px;font-size:22px;font-weight:900}
+.cheat .a.t{color:var(--green)}.cheat .a.f{color:var(--red)}
+.cheat .ex{margin-top:6px;font-size:14px;color:#b9d8c4;line-height:1.5}
+.cheat.blur .q,.cheat.blur .a,.cheat.blur .ex{filter:blur(9px)}
+.cheat .hd{display:flex;justify-content:space-between;font-size:12px;color:#8fbf9f;font-weight:800;margin-bottom:6px}
+.cheat .hd button{background:none;color:#8fbf9f;font-size:12px;font-weight:800;padding:0}
+.note{font-size:13px;color:var(--dim);line-height:1.5;margin:4px 2px 10px}
+.note.bad{color:#ffb0b0}
+/* 工具列 */
+.vol{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:16px;padding:8px 10px;border:1px solid var(--line);margin-bottom:10px}
+.vol button{width:46px;height:46px;border-radius:12px;background:var(--card2);font-size:22px;font-weight:900}
+.vol input{flex:1;accent-color:var(--gold);height:30px}
+.vol b{width:44px;text-align:right;font-variant-numeric:tabular-nums}
+/* 段落清單 */
+.list{display:flex;flex-direction:column;gap:6px}
+.list button{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:var(--card);text-align:left;border:1px solid var(--line);font-size:16px}
+.list button .t{font-size:12px;color:var(--dim);width:44px;font-variant-numeric:tabular-nums}
+.list button.cur{border-color:var(--gold);background:#3a2c14}
+.list button.done{opacity:.55}
+/* 底列 */
+.foot{margin-top:16px;font-size:13px;color:var(--dim);text-align:center;min-height:20px;line-height:1.5}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 20px);transform:translateX(-50%) translateY(120px);background:#000c;color:#fff;padding:10px 18px;border-radius:99px;font-size:15px;font-weight:700;transition:transform .25s;z-index:20;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+#toast.on{transform:translateX(-50%) translateY(0)}
+#toast.bad{background:#7a1c1f}#toast.good{background:#185c3a}
+/* 確認框 */
+#modal{position:fixed;inset:0;background:#000a;display:flex;align-items:flex-end;justify-content:center;z-index:30;padding:16px}
+.mbox{width:100%;max-width:520px;background:var(--card);border-radius:22px;padding:20px;margin-bottom:env(safe-area-inset-bottom)}
+.mbox h3{margin:0 0 6px;font-size:20px}.mbox p{margin:0 0 16px;color:var(--dim);font-size:15px;line-height:1.5}
+/* 登入 */
+.login{margin-top:12vh;text-align:center}
+.login h1{font-size:30px;color:var(--gold);margin:0 0 6px}
+.login p{color:var(--dim);margin:0 0 22px}
+.login input{display:block;width:100%;font-size:17px;padding:15px 16px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--txt);margin-bottom:10px;-webkit-user-select:text;user-select:text}
+.login .err{color:#ff9a9a;min-height:22px;margin:4px 0 8px;font-size:14px}
+</style>
+</head>
+<body>
+<div id="app"><div class="login"><h1>🎛 尾牙遙控器</h1><p>連線中…</p></div></div>
+<div id="toast"></div>
+<div id="modal" class="hide"></div>
+
+<script src="config.js"></script>
+<script type="module">
+import { createBus } from './bus.js';
+const C = window.WEIYA || {};
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const vib = n => { try { navigator.vibrate && navigator.vibrate(n); } catch (e) {} };
+
+let bus, user, S = null, screenT = 0, screenSeen = false, online = true, stateErr = '';
+let pending = null, holding = false, cheatHidden = false, showList = false;
+try { cheatHidden = localStorage.getItem('weiyaCheatHidden') === '1'; } catch (e) {}
+
+// ---------- 小工具 ----------
+let toastT;
+function toast(msg, cls) { const t = $('toast'); t.textContent = msg; t.className = 'on ' + (cls || ''); clearTimeout(toastT); toastT = setTimeout(() => t.className = '', 2200); }
+function confirmBox(title, text, okLabel, ok) {
+  const m = $('modal'); m.classList.remove('hide');
+  m.innerHTML = `<div class="mbox"><h3>${esc(title)}</h3><p>${esc(text)}</p><div class="grid"><button class="btn" id="mNo">取消</button><button class="btn pri" id="mOk">${esc(okLabel)}</button></div></div>`;
+  $('mNo').onclick = () => m.classList.add('hide');
+  m.onclick = e => { if (e.target === m) m.classList.add('hide'); };
+  $('mOk').onclick = () => { m.classList.add('hide'); ok(); };
+}
+const screenOk = () => screenSeen && (bus.now() - screenT) < (bus.demo ? 7000 : 25000);
+
+// ---------- 送指令 ----------
+const LABEL = { next: '下一段', prev: '上一段', goto: '跳段', fx: '煙火', music: '音樂開關', vol: '音量', openGame: '進入遊戲', exitGame: '離開遊戲', reloadGame: '重新載入遊戲', grand: '開頭獎', closeGrand: '收起頭獎' };
+function send(a, v, label) {
+  if (!screenOk()) { toast('大螢幕沒有連線', 'bad'); vib([30, 60, 30]); return; }
+  vib(15);
+  const id = bus.sendCmd(a, v);
+  pending = { id, label: label || LABEL[a] || a, t: Date.now() };
+  if (a !== 'vol') toast('送出：' + pending.label);
+  setTimeout(() => { if (pending && pending.id === id) { toast('⚠ 大螢幕沒有回應，再按一次試試', 'bad'); pending = null; } }, 4000);
+}
+function checkAck() {
+  if (!pending || !S || !S.ack) return;
+  const [id, r] = String(S.ack).split(':');
+  if (id !== pending.id) return;
+  const l = pending.label; pending = null;
+  if (r === 'disabled') { toast('⚠ 大螢幕上「' + l + '」現在不能按', 'bad'); vib([30, 60, 30]); }
+  else if (r === 'none' || r === 'blocked') { toast('⚠ 找不到這顆按鈕', 'bad'); }
+  else if (l !== '音量') toast('✓ ' + l, 'good');
+}
+
+// ---------- 長按 ----------
+function bindHold(root) {
+  root.querySelectorAll('.hold').forEach(b => {
+    let t = null;
+    const start = e => { if (b.disabled) return; e.preventDefault(); holding = true; b.classList.add('holding'); vib(10);
+      t = setTimeout(() => { t = null; b.classList.remove('holding'); holding = false; vib(40); fire(b); }, 800); };
+    const stop = () => { if (t) { clearTimeout(t); t = null; toast('要按住不放才會執行'); } b.classList.remove('holding'); if (holding) { holding = false; setTimeout(draw, 50); } };
+    b.addEventListener('pointerdown', start);
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+    b.addEventListener('contextmenu', e => e.preventDefault());
+  });
+  root.querySelectorAll('[data-a]:not(.hold)').forEach(b => b.addEventListener('click', () => fire(b)));
+}
+function fire(b) {
+  const a = b.dataset.a, v = b.dataset.v;
+  if (a === 'goto') { const i = +v, st = S.stages[i]; confirmBox('跳到「' + st.h + '」？', '大螢幕會直接切到這一段。', '跳過去', () => send('goto', i, '跳到 ' + st.chip)); return; }
+  if (a === 'game') { send('game', v, b.dataset.l || v); return; }
+  send(a, v === undefined ? undefined : (isNaN(+v) ? v : +v));
+}
+
+// ---------- 畫面 ----------
+const btn = (a, label, cls = '', o = {}) => `<button class="btn ${cls}${o.sub ? ' stack' : ''}${o.hold ? ' hold' : ''}${o.off ? ' off' : ''}" data-a="${a}"${o.v !== undefined ? ` data-v="${esc(o.v)}"` : ''}${o.l ? ` data-l="${esc(o.l)}"` : ''}>${label}${o.hold ? '<span class="hint">長按</span>' : ''}${o.sub ? `<span class="sub">${esc(o.sub)}</span>` : ''}</button>`;
+function gbtn(G, name, label, cls, hold) {
+  const b = G && G.btn && G.btn[name]; const off = b && b.ok === false;
+  return btn('game', label, cls, { v: name, hold, off, l: label.replace(/<[^>]+>/g, '').trim() });
+}
+function stat(label, val, cls = '') { return `<div class="stat ${cls}"><b>${esc(val)}</b><span>${esc(label)}</span></div>`; }
+
+function gamePanel() {
+  const st = S.stages[S.idx], G = S.glance || {}, gname = (C.games && C.games[st.game] || {}).name || st.h;
+  let h = '';
+  if (!S.inGame) {
+    h += `<div class="sec">${esc(gname)}</div>`;
+    if (G.needLogin) h += `<div class="note bad">⚠ 遊戲畫面要求主持人登入：請在大螢幕電腦上點遊戲畫面裡的「主持人登入」</div>`;
+    const ss = []; if (G.players != null) ss.push(stat('已加入', G.players)); if (ss.length) h += `<div class="stats">${ss.join('')}</div>`;
+    h += `<div class="col">${btn('openGame', '🎮 打開遊戲畫面', 'pri xl', { sub: S.opened ? '再次打開' : '大螢幕切到遊戲（QR Code 讓大家掃）' })}</div>`;
+    return h;
+  }
+  h += `<div class="sec">${esc(gname)}<span class="pill live">遊戲中</span></div>`;
+  if (G.needLogin) h += `<div class="note bad">⚠ 遊戲畫面要求主持人登入：請在大螢幕電腦上點「主持人登入」</div>`;
+  if (G.demo) h += `<div class="note bad">⚠ 遊戲是 DEMO 單機模式，沒接上 Firebase</div>`;
+  const ss = [];
+  if (G.players != null) ss.push(stat(st.game === 'coins' ? '參賽手機' : '人數', G.players));
+  if (G.taps) ss.push(stat('總點擊', G.taps));
+  if (G.answered) ss.push(stat('已作答', G.answered));
+  if (G.big != null) ss.push(stat('大螢幕數字', G.big, 'cd'));
+  if (ss.length) h += `<div class="stats">${ss.join('')}</div>`;
+  if (st.game === 'coins') {
+    h += `<div class="col">${gbtn(G, 'start', '▶ 開始比賽', 'pri xl')}</div>`;
+    h += `<div class="grid">${gbtn(G, 'result', G.btn && /關閉/.test(G.btn.result && G.btn.result.label || '') ? '✕ 關閉結算' : '📋 結算明細', 'big')}${gbtn(G, 'reset', '↺ 重置', 'big red', 1)}</div>`;
+    h += `<div class="note">重置會清掉這一局的明細，要留紀錄請先在大螢幕按「下載 CSV」。</div>`;
+  } else if (st.game === 'truefalse') {
+    if (G.q) {
+      h += `<div class="cheat ${cheatHidden ? 'blur' : ''}"><div class="hd"><span>🤫 主持小抄（只有遙控器看得到）</span><button id="cheatT">${cheatHidden ? '顯示' : '隱藏'}</button></div><div class="q">${esc(G.q)}</div><div class="a ${G.ans ? 't' : 'f'}">${G.ans ? '⭕ 真的' : '❌ 假的'}</div>${G.ex ? `<div class="ex">${esc(G.ex)}</div>` : ''}</div>`;
+    }
+    const nl = (G.btn && G.btn.next && G.btn.next.label) || '⏭ 下一題';
+    h += `<div class="col">${gbtn(G, 'start', '▶ 開始遊戲', 'pri big')}</div>`;
+    h += `<div class="grid">${gbtn(G, 'reveal', '📣 公布結果', 'big pri', 1)}${gbtn(G, 'next', esc(nl), 'big')}</div>`;
+    h += `<div class="grid">${gbtn(G, 'skip', '↷ 跳過題目', 'sm', 1)}${gbtn(G, 'restart', '↺ 重新開始', 'sm red', 1)}</div>`;
+    h += `<div class="grid">${gbtn(G, 'score', '🏅 積分模式', 'sm')}${gbtn(G, 'elim', '💀 淘汰模式', 'sm')}</div>`;
+  }
+  h += `<div class="grid" style="margin-top:14px">${btn('reloadGame', '↻ 重新載入遊戲', 'sm', { hold: 1 })}${btn('exitGame', '⏹ 回到流程', 'sm red', { hold: 1 })}</div>`;
+  return h;
+}
+function grandPanel() {
+  if (S.charging) return `<div class="sec">壓軸頭獎</div><div class="col"><button class="btn xl off">🔥 集氣中…</button></div>`;
+  if (S.exploded) return `<div class="sec">壓軸頭獎</div><div class="col">${S.grandOn ? btn('closeGrand', '收起頭獎畫面', 'big') : ''}${btn('fx', '🎆 再放一次煙火', 'big')}</div>`;
+  return `<div class="sec">壓軸頭獎</div><div class="col">${btn('grand', '🔥 開始集氣・開頭獎', 'pri xl', { hold: 1, sub: '能量條衝刺 9 秒 → 倒數 3、2、1 → 爆開' })}</div>`;
+}
+
+function draw() {
+  if (holding) return;
+  const app = $('app');
+  if (!user) return;
+  const ok = screenOk();
+  let h = `<div class="top"><div class="lamp ${ok ? 'ok' : 'bad'}"><i></i>${ok ? '大螢幕已連線' : '大螢幕沒連線'}</div><div class="sp"></div><div class="who">${esc(user.name)}${bus.demo ? '<br>試玩模式' : ''}${S && S.remotes && S.remotes.length > 1 ? `<br>遙控器 ${S.remotes.length} 支在線` : ''}</div><button class="menu" id="mn">⋯</button></div>`;
+  if (!online) h += `<div class="warn">📶 這支手機網路斷了，恢復後會自動重新連線</div>`;
+  if (stateErr) h += `<div class="warn">${esc(stateErr)}</div>`;
+  else if (!ok) h += `<div class="warn">大螢幕電腦還沒打開或沒登入。請在電腦開大螢幕網址、登入主持人帳號、點「開始」。</div>`;
+  if (!S || !S.stages) { app.innerHTML = h + `<div class="note">等待大螢幕…</div>`; bindTop(); return; }
+  const st = S.stages[S.idx], nx = S.stages[S.idx + 1];
+  h += `<div class="now"><div class="k"><span>第 ${S.idx + 1} / ${S.n} 段${st.t ? '・' + esc(st.t) : ''}</span><span>${S.cine ? '🎬 播放動畫中' : ''}</span></div>
+    <div class="h">${esc(st.h)}${S.inGame ? '<span class="pill live">遊戲中</span>' : ''}</div>
+    <div class="s">下一段：<b>${nx ? esc(nx.h) : '（最後一段）'}</b></div>
+    <div class="prog"><i style="width:${((S.idx + 1) / S.n * 100).toFixed(1)}%"></i></div></div>`;
+  // 主要操作
+  if (st.game) h += gamePanel();
+  else if (st.grand) h += grandPanel();
+  if (!S.inGame) {
+    const busy = S.charging;
+    const pv = btn('prev', '◀ 上一段', 'big' + (busy || S.idx === 0 && !S.grandOn ? ' off' : ''));
+    const last = S.idx >= S.n - 1;
+    const nxBtn = btn('next', S.cine ? '⏭ 跳過動畫' : '下一段 ▶', 'big pri' + (busy || (last && !S.cine) ? ' off' : ''));
+    // 頭獎那一段：還沒開獎時只能長按「開始集氣」；開完獎才出現「下一段」（加碼 13 抽）
+    h += st.grand && !S.exploded ? `<div class="col" style="margin-top:12px">${pv}</div>` : `<div class="grid" style="margin-top:12px">${pv}${nxBtn}</div>`;
+  }
+  // 工具
+  h += `<div class="sec">音效</div><div class="grid">${btn('fx', '🎆 放煙火', 'sm')}${btn('music', S.music ? '🎵 音樂：開' : '🔇 音樂：關', 'sm' + (S.music ? '' : ' sel'))}</div>
+    <div class="vol"><button id="vDn">−</button><input type="range" id="vR" min="0" max="100" step="5" value="${S.vol}"><b id="vB">${S.vol}</b><button id="vUp">＋</button></div>
+    ${S.audio === false ? '<div class="note bad">⚠ 大螢幕的音效還沒啟動：請在電腦上點一下畫面</div>' : '<div class="note">控制大螢幕網頁的音樂、音效和影片音量（不是電腦的系統音量）。</div>'}`;
+  // 段落清單
+  h += `<div class="sec">全部流程<button class="btn sm" id="lsT" style="min-height:30px;padding:4px 12px;font-size:12px">${showList ? '收起' : '展開'}</button></div>`;
+  if (showList) h += `<div class="list">${S.stages.map((x, i) => `<button data-a="goto" data-v="${i}" class="${i === S.idx ? 'cur' : i < S.idx ? 'done' : ''}"><span class="t">${esc(x.t)}</span>${esc(x.h)}${x.game ? ' 🎮' : ''}${x.grand ? ' 🏆' : ''}</button>`).join('')}</div>`;
+  h += `<div class="foot">${S.lastBy ? `最後操作：${esc(S.lastBy)}・${esc(S.lastAct)}` : ''}</div>`;
+  if (app.dataset.h === h) return;
+  app.dataset.h = h; app.innerHTML = h;
+  bindHold(app); bindTop();
+  const ct = $('cheatT'); if (ct) ct.onclick = () => { cheatHidden = !cheatHidden; try { localStorage.setItem('weiyaCheatHidden', cheatHidden ? '1' : '0'); } catch (e) {} draw(); };
+  const lt = $('lsT'); if (lt) lt.onclick = () => { showList = !showList; draw(); };
+  bindVol();
+}
+let volT, volLocal = null;
+function bindVol() {
+  const r = $('vR'); if (!r) return;
+  const set = v => { v = Math.max(0, Math.min(100, v)); volLocal = v; r.value = v; $('vB').textContent = v; clearTimeout(volT); volT = setTimeout(() => { send('vol', v); setTimeout(() => volLocal = null, 1500); }, 180); };
+  r.oninput = () => set(+r.value);
+  $('vDn').onclick = () => set((volLocal ?? +r.value) - 10);
+  $('vUp').onclick = () => set((volLocal ?? +r.value) + 10);
+  if (volLocal !== null) { r.value = volLocal; $('vB').textContent = volLocal; }
+}
+function bindTop() {
+  const m = $('mn'); if (!m) return;
+  m.onclick = () => confirmBox('帳號：' + (user.email || user.name), '登出後要重新輸入密碼才能遙控。', '登出', () => bus.logout());
+}
+
+function loginView(msg) {
+  $('app').dataset.h = '';
+  $('app').innerHTML = `<div class="login"><h1>🎛 尾牙遙控器</h1><p>用遙控器帳號登入</p>
+    <input id="lE" type="email" autocomplete="username" placeholder="Email" value="${esc(localStorage.getItem('weiyaRemoteEmail') || '')}">
+    <input id="lP" type="password" autocomplete="current-password" placeholder="密碼">
+    <div class="err" id="lErr">${esc(msg || '')}</div>
+    <button class="btn pri big" style="width:100%" id="lGo">登入</button></div>`;
+  const go = async () => {
+    $('lErr').textContent = '登入中…';
+    try { localStorage.setItem('weiyaRemoteEmail', $('lE').value.trim()); } catch (e) {}
+    try { await bus.login($('lE').value, $('lP').value); }
+    catch (e) { $('lErr').textContent = /invalid|wrong|user-not-found/.test(e.code || '') ? '帳號或密碼不對' : /too-many/.test(e.code || '') ? '試太多次了，等一下再登入' : '登入失敗：' + (e.code || e.message); }
+  };
+  $('lGo').onclick = go; $('lP').onkeydown = e => { if (e.key === 'Enter') go(); };
+}
+
+// 螢幕保持亮著
+let wake = null;
+async function keepAwake() { try { if ('wakeLock' in navigator && !wake && document.visibilityState === 'visible') { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => wake = null); } } catch (e) {} }
+document.addEventListener('visibilitychange', keepAwake);
+document.addEventListener('pointerdown', keepAwake, { passive: true });
+
+(async function boot() {
+  bus = await createBus(C, 'remote');
+  let started = false;
+  bus.onUser(u => {
+    user = u;
+    if (!u) { started = false; loginView(bus.loadError ? 'Firebase 載入失敗：' + bus.loadError : ''); return; }
+    const allowed = bus.demo || !C.remotes || Object.keys(C.remotes).map(x => x.toLowerCase()).includes((u.email || '').toLowerCase());
+    if (!allowed) { stateErr = '這個帳號（' + u.email + '）不在遙控名單裡，請用遙控器帳號登入。'; }
+    $('app').dataset.h = ''; draw();
+    if (started) return; started = true;
+    bus.onConnected(c => { online = c; draw(); });
+    bus.onScreen(v => { if (v && v.t) { screenT = v.t; screenSeen = true; } else screenSeen = false; draw(); });
+    bus.onState((s, err) => {
+      if (err) { stateErr = /permission/i.test(String(err.code || err.message)) ? '沒有權限：這個帳號還沒加進資料庫規則的遙控名單。' : '讀取失敗：' + (err.code || err.message); draw(); return; }
+      const moved = S && s && S.idx !== s.idx; S = s; checkAck(); draw(); if (moved) window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    bus.remotePresence();
+    keepAwake();
+  });
+  setInterval(draw, 3000);
+})();
+</script>
+</body>
+</html>

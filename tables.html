@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>財神撒金幣・桌號 QR 卡</title>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif; background: #f2ece4; color: #3b0a0d; }
+  .bar { padding: 14px 18px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: #fff; border-bottom: 1px solid #e3d6c6; }
+  .bar b { font-size: 18px; }
+  .bar button { font: 700 15px inherit; padding: 8px 16px; border-radius: 8px; border: 0; background: #b3141d; color: #fff; cursor: pointer; }
+  .bar span { font-size: 13px; color: #7a5a4a; }
+  .sheet { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8mm; padding: 10mm; max-width: 210mm; margin: 0 auto; }
+  .card { background: #fff; border: 1.2mm solid #b3141d; border-radius: 5mm; padding: 6mm 5mm 5mm; text-align: center; break-inside: avoid; page-break-inside: avoid; height: 128mm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
+  .card .t { font-size: 10mm; font-weight: 900; color: #b3141d; line-height: 1; }
+  .card .t small { display: block; font-size: 3.6mm; font-weight: 700; color: #7a5a4a; margin-top: 1.5mm; }
+  .card .qr { width: 62mm; height: 62mm; }
+  .card .qr img, .card .qr canvas { width: 100% !important; height: 100% !important; }
+  .card .how { font-size: 4mm; font-weight: 700; line-height: 1.45; }
+  .card .how small { display: block; font-size: 3mm; font-weight: 400; color: #7a5a4a; }
+  .card .url { font-size: 2.6mm; color: #9a8070; word-break: break-all; }
+  @media print { .bar { display: none; } body { background: #fff; } .sheet { padding: 0; } }
+</style>
+</head>
+<body>
+<div class="bar"><b>🪙 財神撒金幣・桌號 QR 卡</b><button onclick="print()">🖨 列印</button><span id="info"></span></div>
+<div class="sheet" id="sheet"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="../weiya-coins/config.js"></script>
+<script>
+  // 每張卡的網址：手機頁 ＋ ?table=桌號。掃了輸入名字後，直接進那一桌。
+  var CFG = window.GAME_CONFIG || {};
+  var base = (CFG.joinUrl && CFG.joinUrl.trim()) || new URL('../weiya-coins/', location.href).href;
+  var tables = CFG.departments || [];
+  if (!tables.length) for (var i = 1; i <= 14; i++) tables.push({ zh: '第' + i + '桌' });
+  document.getElementById('info').textContent = '共 ' + tables.length + ' 張，A4 一頁 4 張。網址：' + base + '?table=N';
+  var sheet = document.getElementById('sheet');
+  tables.forEach(function (d, i) {
+    var n = i + 1, url = base + (base.indexOf('?') < 0 ? '?' : '&') + 'table=' + n;
+    var c = document.createElement('div'); c.className = 'card';
+    c.innerHTML = '<div class="t">' + (d.zh || ('第' + n + '桌')) + '<small>Table ' + n + ' · Bàn ' + n + '</small></div>' +
+      '<div class="qr"></div>' +
+      '<div class="how">📱 財神撒金幣：掃這裡加入這一桌<small>Scan to join this table · Quét mã để vào bàn này</small></div>' +
+      '<div class="url">' + url + '</div>';
+    sheet.appendChild(c);
+    new QRCode(c.querySelector('.qr'), { text: url, width: 512, height: 512, correctLevel: QRCode.CorrectLevel.M });
+  });
+</script>
+</body>
+</html>
